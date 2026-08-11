@@ -1,13 +1,7 @@
 <script setup>
-import { computed, ref } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
 
-const showingNavigationDropdown = ref(false);
 const page = usePage();
 
 const user = computed(() => page.props.auth.user);
@@ -16,107 +10,393 @@ const isManager = computed(() => user.value?.is_manager);
 const canManageUsers = computed(() => isAdmin.value || isManager.value);
 const notifications = computed(() => page.props.notifications || []);
 const flash = computed(() => page.props.flash || {});
+
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+const notificationCount = computed(() => notifications.value.length);
+const currentPage = computed(() => {
+    const component = page.component;
+    const match = component.match(/Pages[\\/]([^\\/]+)/);
+    return match ? match[1].toLowerCase() : 'dashboard';
+});
+
+const notificationKey = ref('');
+const notificationPanelOpen = ref(false);
+const logoutModalOpen = ref(false);
+
+watch(logoutModalOpen, (isOpen) => {
+    if (isOpen) {
+        document.body.classList.add('modal-open');
+    } else {
+        document.body.classList.remove('modal-open');
+    }
+});
+
+let clockInterval = null;
+let sidebarOpen = false;
+
+const startClock = (baseDate, timeZone, isOnline) => {
+    const baseTimestamp = baseDate.getTime();
+    const basePerformanceTime = performance.now();
+
+    const tick = () => {
+        const currentDate = new Date(baseTimestamp + (performance.now() - basePerformanceTime));
+        const timeEl = document.getElementById('topbarClockTime');
+        const dateEl = document.getElementById('topbarClockDate');
+        const clockEl = document.querySelector('.topbar-clock');
+        if (!timeEl || !dateEl) return;
+
+        const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+        const dateOptions = { month: '2-digit', day: '2-digit', year: 'numeric' };
+        if (timeZone) {
+            timeOptions.timeZone = timeZone;
+            dateOptions.timeZone = timeZone;
+        }
+
+        timeEl.textContent = new Intl.DateTimeFormat(undefined, timeOptions).format(currentDate);
+        dateEl.textContent = new Intl.DateTimeFormat(undefined, dateOptions).format(currentDate);
+
+        if (clockEl) {
+            clockEl.setAttribute('title', isOnline && timeZone ? 'Online synced time · ' + timeZone : 'Current time');
+        }
+    };
+
+    tick();
+    clockInterval = setInterval(tick, 1000);
+};
+
+const applyOnlineTime = () => {
+    startClock(new Date(), '', false);
+};
+
+const toggleTheme = () => {
+    const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    const next = current === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('ums-theme', next); } catch {}
+};
+
+const toggleSidebar = () => {
+    sidebarOpen = !sidebarOpen;
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('open', sidebarOpen);
+    }
+};
+
+const closeSidebar = () => {
+    if (window.innerWidth <= 768) {
+        sidebarOpen = false;
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.classList.remove('open');
+    }
+};
+
+const toggleNotificationPanel = () => {
+    notificationPanelOpen.value = !notificationPanelOpen.value;
+    const panel = document.getElementById('notificationPanel');
+    const toggle = document.querySelector('.notification-toggle');
+    if (panel && toggle) {
+        panel.hidden = !notificationPanelOpen.value;
+        toggle.setAttribute('aria-expanded', String(notificationPanelOpen.value));
+    }
+    if (notificationPanelOpen.value) {
+        markNotificationsRead();
+    }
+};
+
+const markNotificationsRead = () => {
+    try {
+        if (notificationKey.value) {
+            localStorage.setItem('ums-read-notifications', notificationKey.value);
+        }
+    } catch {}
+    const badge = document.querySelector('.notification-badge');
+    if (badge) {
+        badge.remove();
+    }
+};
+
+const closeNotificationPanel = () => {
+    notificationPanelOpen.value = false;
+    const panel = document.getElementById('notificationPanel');
+    const toggle = document.querySelector('.notification-toggle');
+    if (panel) panel.hidden = true;
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+};
+
+const logout = () => {
+    logoutModalOpen.value = true;
+};
+
+const confirmLogout = () => {
+    logoutModalOpen.value = false;
+    router.post(route('logout'));
+};
+
+const cancelLogout = () => {
+    logoutModalOpen.value = false;
+};
+
+const addRipple = (e) => {
+    const btn = e.currentTarget;
+    const old = btn.querySelector('.ripple-effect');
+    if (old) old.remove();
+
+    const ripple = document.createElement('span');
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    ripple.className = 'ripple-effect';
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+    ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+};
+
+const initInputs = () => {
+    document.querySelectorAll('.mui-input, .mui-select').forEach((el) => {
+        if (el.value && el.value.trim && el.value.trim() !== '') {
+            el.classList.add('has-value');
+        }
+        el.addEventListener('input', () => {
+            el.classList.toggle('has-value', el.value && el.value.trim() !== '');
+        });
+        el.addEventListener('change', () => {
+            el.classList.toggle('has-value', el.value !== '');
+        });
+    });
+};
+
+onMounted(() => {
+    const savedTheme = localStorage.getItem('ums-theme');
+    if (savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    }
+
+    applyOnlineTime();
+
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+
+    const menuToggle = document.getElementById('menuToggle');
+    if (menuToggle) {
+        menuToggle.addEventListener('click', toggleSidebar);
+    }
+
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth > 768) return;
+        const sidebar = document.querySelector('.sidebar');
+        const menu = document.getElementById('menuToggle');
+        if (sidebar && menu && !sidebar.contains(e.target) && !menu.contains(e.target)) {
+            closeSidebar();
+        }
+    });
+
+    const notificationToggle = document.querySelector('.notification-toggle');
+    const notificationPanel = document.getElementById('notificationPanel');
+
+    if (notificationToggle && notificationPanel) {
+        notificationKey.value = notificationToggle.getAttribute('data-notification-key') || '';
+        const storageKey = 'ums-read-notifications';
+
+        const clearBadge = () => {
+            const badge = notificationToggle.querySelector('.notification-badge');
+            if (badge) badge.remove();
+        };
+
+        try {
+            if (notificationKey.value && localStorage.getItem(storageKey) === notificationKey.value) {
+                clearBadge();
+            }
+        } catch {}
+
+        notificationToggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toggleNotificationPanel();
+        });
+
+        notificationPanel.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+
+        document.addEventListener('click', () => {
+            if (!notificationPanel.hidden) {
+                closeNotificationPanel();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !notificationPanel.hidden) {
+                closeNotificationPanel();
+                notificationToggle.focus();
+            }
+        });
+    }
+
+    document.querySelectorAll('.mui-btn').forEach((btn) => {
+        btn.addEventListener('click', addRipple);
+    });
+
+    initInputs();
+});
+
+onUnmounted(() => {
+    if (clockInterval) clearInterval(clockInterval);
+});
 </script>
 
 <template>
-    <div>
-        <div class="min-h-screen bg-gray-100">
-            <nav class="border-b border-gray-100 bg-white">
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="flex h-16 justify-between">
-                        <div class="flex">
-                            <div class="flex shrink-0 items-center">
-                                <Link :href="route('dashboard')">
-                                    <ApplicationLogo class="block h-9 w-auto fill-current text-gray-800" />
-                                </Link>
-                            </div>
-
-                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                                    Dashboard
-                                </NavLink>
-                                <NavLink v-if="canManageUsers" :href="route('users.index')" :active="route().current('users.*')">
-                                    Users
-                                </NavLink>
-                                <NavLink v-if="isAdmin" :href="route('roles.index')" :active="route().current('roles.*')">
-                                    Roles
-                                </NavLink>
-                                <NavLink v-if="isAdmin" :href="route('audit-logs.index')" :active="route().current('audit-logs.*')">
-                                    Audit Logs
-                                </NavLink>
-                            </div>
-                        </div>
-
-                        <div class="hidden sm:ms-6 sm:flex sm:items-center">
-                            <div class="relative ms-3">
-                                <Dropdown align="right" width="48">
-                                    <template #trigger>
-                                        <span class="inline-flex rounded-md">
-                                            <button type="button" class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none">
-                                                {{ user?.name }}
-                                                <svg class="-me-0.5 ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-
-                                    <template #content>
-                                        <DropdownLink :href="route('profile.edit')">Profile</DropdownLink>
-                                        <DropdownLink :href="route('logout')" method="post" as="button">Log Out</DropdownLink>
-                                    </template>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <div class="-me-2 flex items-center sm:hidden">
-                            <button @click="showingNavigationDropdown = !showingNavigationDropdown" class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none">
-                                <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                                    <path :class="{ hidden: showingNavigationDropdown, 'inline-flex': !showingNavigationDropdown }" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                                    <path :class="{ hidden: !showingNavigationDropdown, 'inline-flex': showingNavigationDropdown }" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div :class="{ block: showingNavigationDropdown, hidden: !showingNavigationDropdown }" class="sm:hidden">
-                    <div class="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">Dashboard</ResponsiveNavLink>
-                        <ResponsiveNavLink v-if="canManageUsers" :href="route('users.index')" :active="route().current('users.*')">Users</ResponsiveNavLink>
-                        <ResponsiveNavLink v-if="isAdmin" :href="route('roles.index')" :active="route().current('roles.*')">Roles</ResponsiveNavLink>
-                        <ResponsiveNavLink v-if="isAdmin" :href="route('audit-logs.index')" :active="route().current('audit-logs.*')">Audit Logs</ResponsiveNavLink>
-                    </div>
-
-                    <div class="border-t border-gray-200 pb-1 pt-4">
-                        <div class="px-4">
-                            <div class="text-base font-medium text-gray-800">{{ user?.name }}</div>
-                            <div class="text-sm font-medium text-gray-500">{{ user?.email }}</div>
-                        </div>
-                        <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')">Profile</ResponsiveNavLink>
-                            <ResponsiveNavLink :href="route('logout')" method="post" as="button">Log Out</ResponsiveNavLink>
-                        </div>
-                    </div>
-                </div>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="material-icons sidebar-logo">admin_panel_settings</span>
+                <h2>UMS</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <Link :href="route('dashboard')" class="nav-item" :class="{ active: route().current('dashboard') }">
+                    <span class="material-icons">dashboard</span>
+                    <span class="nav-text">Dashboard</span>
+                </Link>
+                <Link v-if="canManageUsers" :href="route('users.index')" class="nav-item" :class="{ active: route().current('users.*') }">
+                    <span class="material-icons">group</span>
+                    <span class="nav-text">Users</span>
+                </Link>
+                <Link v-if="isAdmin" :href="route('roles.index')" class="nav-item" :class="{ active: route().current('roles.*') }">
+                    <span class="material-icons">security</span>
+                    <span class="nav-text">Roles</span>
+                </Link>
+                <Link v-if="isAdmin" :href="route('audit-logs.index')" class="nav-item" :class="{ active: route().current('audit-logs.*') }">
+                    <span class="material-icons">history</span>
+                    <span class="nav-text">Audit Logs</span>
+                </Link>
+                <Link :href="route('profile.edit')" class="nav-item" :class="{ active: route().current('profile.*') }">
+                    <span class="material-icons">person</span>
+                    <span class="nav-text">Profile</span>
+                </Link>
+                <div class="nav-spacer"></div>
+                <button type="button" class="nav-item logout" @click="logout">
+                    <span class="material-icons">logout</span>
+                    <span class="nav-text">Logout</span>
+                </button>
             </nav>
+        </aside>
 
-            <div v-if="flash.success" class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="rounded-md bg-green-50 p-4 text-sm text-green-700">{{ flash.success }}</div>
-            </div>
-            <div v-if="flash.error" class="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="rounded-md bg-red-50 p-4 text-sm text-red-700">{{ flash.error }}</div>
-            </div>
-
-            <header v-if="$slots.header" class="bg-white shadow">
-                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                    <slot name="header" />
+        <div class="main-wrapper">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <span class="material-icons topbar-menu-icon" id="menuToggle">menu</span>
+                    <h3 class="topbar-title">{{ currentPage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}</h3>
+                </div>
+                <div class="topbar-right">
+                    <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">
+                        <span class="theme-toggle-track">
+                            <span class="theme-toggle-thumb">
+                                <span class="material-icons theme-toggle-icon">dark_mode</span>
+                            </span>
+                        </span>
+                    </button>
+                    <div class="topbar-clock" title="Online synced time">
+                        <span class="material-icons topbar-clock-icon">schedule</span>
+                        <span class="topbar-clock-text">
+                            <span class="topbar-clock-time" id="topbarClockTime">--:--:-- --</span>
+                            <span class="topbar-clock-date" id="topbarClockDate">--/--/----</span>
+                        </span>
+                    </div>
+                    <span class="topbar-user">{{ user?.name || user?.username || user?.email }}</span>
+                    <div class="notification-menu">
+                        <button
+                            class="topbar-icon notification-toggle"
+                            type="button"
+                            aria-label="Open notifications"
+                            aria-expanded="false"
+                            data-notification-key="current"
+                        >
+                            <span class="material-icons">notifications</span>
+                            <span v-if="notificationCount > 0" class="notification-badge">{{ Math.min(notificationCount, 9) }}</span>
+                        </button>
+                        <div id="notificationPanel" class="notification-panel" hidden>
+                            <div class="notification-panel-header">
+                                <div>
+                                    <h4>Notifications</h4>
+                                    <p>You have {{ notificationCount }} notification{{ notificationCount === 1 ? '' : 's' }}</p>
+                                </div>
+                                <span class="material-icons">notifications_active</span>
+                            </div>
+                            <div class="notification-list">
+                                <div v-if="!notifications.length" class="notification-empty">
+                                    <span class="material-icons">inbox</span>
+                                    <span>No notifications yet.</span>
+                                </div>
+                                <div
+                                    v-for="item in notifications"
+                                    :key="item.id"
+                                    class="notification-item"
+                                    :class="'notification-' + (item.icon || 'default')"
+                                >
+                                    <div class="notification-item-icon">
+                                        <span class="material-icons">{{ item.icon || 'info' }}</span>
+                                    </div>
+                                    <div class="notification-item-content">
+                                        <strong>{{ item.title }}</strong>
+                                        <p>{{ item.message }}</p>
+                                        <small v-if="item.time">{{ new Date(item.time).toLocaleString() }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <Link :href="route('profile.edit')" class="topbar-profile-link" aria-label="Profile">
+                        <img
+                            v-if="user?.profile_photo"
+                            :src="user.profile_photo"
+                            alt="Profile"
+                            class="topbar-profile-img"
+                        />
+                        <span v-else class="material-icons topbar-icon">account_circle</span>
+                    </Link>
                 </div>
             </header>
 
-            <main>
+            <main class="content">
+                <div v-if="flash.success" class="login-alert login-alert-info" role="alert">
+                    {{ flash.success }}
+                </div>
+                <div v-if="flash.error" class="login-alert login-alert-error" role="alert">
+                    {{ flash.error }}
+                </div>
+
+                <slot name="header">
+                    <div class="section-header">
+                        <h2 class="topbar-title" style="font-size: 1.5rem;">{{ currentPage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}</h2>
+                    </div>
+                </slot>
+
                 <slot />
             </main>
+
+            <footer class="main-footer">
+                <p>&copy; {{ new Date().getFullYear() }} User Management System.</p>
+            </footer>
+        </div>
+
+        <div v-if="logoutModalOpen" class="confirm-modal" @click.self="cancelLogout" @keydown.escape="cancelLogout">
+            <div class="confirm-modal-backdrop"></div>
+            <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle">
+                <div class="confirm-card-icon">
+                    <span class="material-icons">logout</span>
+                </div>
+                <div class="confirm-card-content">
+                    <h3 id="logoutModalTitle">Confirm Logout</h3>
+                    <p>Are you sure you want to log out of your account?</p>
+                </div>
+                <div class="confirm-card-actions">
+                    <button type="button" class="mui-btn mui-btn-outlined" @click="cancelLogout">Cancel</button>
+                    <button type="button" class="mui-btn mui-btn-danger confirm-approve" @click="confirmLogout">Yes, Logout</button>
+                </div>
+            </div>
         </div>
     </div>
 </template>

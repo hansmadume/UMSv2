@@ -3,11 +3,15 @@ defineProps({
     value: {
         type: String,
     },
+    for: {
+        type: String,
+        default: '',
+    },
 });
 </script>
 
 <template>
-    <label class="block text-sm font-medium text-gray-700">
+    <label class="mui-label" :for="for">
         <span v-if="value">{{ value }}</span>
         <span v-else><slot /></span>
     </label>

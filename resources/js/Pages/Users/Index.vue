@@ -13,6 +13,8 @@ const search = ref(props.filters.search || '');
 const status = ref(props.filters.status || '');
 const roleId = ref(props.filters.role_id || '');
 
+let searchTimeout = null;
+
 const applyFilters = () => {
     router.get(route('users.index'), {
         search: search.value,
@@ -20,6 +22,13 @@ const applyFilters = () => {
         role_id: roleId.value,
     }, { preserveState: true, replace: true });
 };
+
+watch(search, () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        applyFilters();
+    }, 400);
+});
 
 const resetFilters = () => {
     search.value = '';
@@ -42,75 +51,79 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString() : '—';
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">Users</h2>
-                <Link :href="route('users.create')" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Add User</Link>
+            <div class="section-header">
+                <h2>Users</h2>
+                <div class="header-actions">
+                    <Link :href="route('users.create')" class="mui-btn mui-btn-contained">Add User</Link>
+                </div>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                    <div class="p-6">
-                        <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
-                            <input v-model="search" @keyup.enter="applyFilters" type="text" placeholder="Search by name, username, email..." class="rounded-md border-gray-300" />
-                            <select v-model="status" @change="applyFilters" class="rounded-md border-gray-300">
-                                <option value="">All Statuses</option>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                            <select v-model="roleId" @change="applyFilters" class="rounded-md border-gray-300">
-                                <option value="">All Roles</option>
-                                <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
-                            </select>
-                            <button @click="resetFilters" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50">Reset</button>
-                        </div>
+        <div class="user-management">
+            <div class="mui-card">
+                <div class="search-box">
+                    <div class="search-field">
+                        <input v-model="search" type="text" placeholder="Search by name, username, email..." class="mui-input" />
+                    </div>
+                    <div class="search-field">
+                        <select v-model="status" @change="applyFilters" class="mui-select mui-select-group">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="search-field">
+                        <select v-model="roleId" @change="applyFilters" class="mui-select mui-select-group">
+                            <option value="">All Roles</option>
+                            <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+                        </select>
+                    </div>
+                    <button @click="resetFilters" class="mui-btn mui-btn-outlined mui-btn-sm">Reset</button>
+                </div>
 
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead>
-                                    <tr>
-                                        <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Name</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Username</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Email</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Role</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-                                        <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Last Login</th>
-                                        <th class="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    <tr v-for="u in users.data" :key="u.id">
-                                        <td class="px-3 py-2 text-sm text-gray-900">{{ u.full_name || '—' }}</td>
-                                        <td class="px-3 py-2 text-sm text-gray-700">{{ u.username }}</td>
-                                        <td class="px-3 py-2 text-sm text-gray-700">{{ u.email }}</td>
-                                        <td class="px-3 py-2 text-sm text-gray-700">{{ u.role?.name ?? '—' }}</td>
-                                        <td class="px-3 py-2">
-                                            <span :class="u.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" class="inline-flex rounded-full px-2 text-xs font-semibold">{{ u.status }}</span>
-                                        </td>
-                                        <td class="px-3 py-2 text-sm text-gray-500">{{ formatDate(u.last_login) }}</td>
-                                        <td class="px-3 py-2 text-right text-sm">
-                                            <Link :href="route('users.show', u.id)" class="text-indigo-600 hover:underline">View</Link>
-                                            <Link :href="route('users.edit', u.id)" class="ml-2 text-indigo-600 hover:underline">Edit</Link>
-                                            <button @click="deleteUser(u)" class="ml-2 text-red-600 hover:underline">Delete</button>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="!users.data.length">
-                                        <td colspan="7" class="px-3 py-6 text-center text-sm text-gray-500">No users found.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="mui-table-container">
+                    <table class="mui-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Last Login</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="u in users.data" :key="u.id">
+                                <td>{{ u.full_name || '—' }}</td>
+                                <td>{{ u.username }}</td>
+                                <td>{{ u.email }}</td>
+                                <td>{{ u.role?.name ?? '—' }}</td>
+                                <td>
+                                    <span :class="['status-badge', u.status]">{{ u.status }}</span>
+                                </td>
+                                <td>{{ formatDate(u.last_login) }}</td>
+                                <td class="table-actions" style="text-align: right;">
+                                    <Link :href="route('users.show', u.id)" class="mui-btn mui-btn-outlined mui-btn-sm">View</Link>
+                                    <Link :href="route('users.edit', u.id)" class="mui-btn mui-btn-outlined mui-btn-sm">Edit</Link>
+                                    <button @click="deleteUser(u)" class="mui-btn mui-btn-danger mui-btn-sm">Delete</button>
+                                </td>
+                            </tr>
+                            <tr class="table-empty-state" v-if="!users.data.length">
+                                <td colspan="7">No users found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                        <div class="mt-4 flex items-center justify-between">
-                            <div class="text-sm text-gray-600">Showing {{ users.from || 0 }} to {{ users.to || 0 }} of {{ users.total }}</div>
-                            <div class="flex gap-2">
-                                <template v-for="link in users.links" :key="link.label">
-                                    <Link v-if="link.url" :href="link.url" :class="link.active ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700'" class="rounded border px-3 py-1 text-sm" v-html="link.label" />
-                                    <span v-else class="rounded border px-3 py-1 text-sm text-gray-400" v-html="link.label" />
-                                </template>
-                            </div>
-                        </div>
+                <div class="form-actions" style="justify-content: space-between;">
+                    <div>Showing {{ users.from || 0 }} to {{ users.to || 0 }} of {{ users.total }}</div>
+                    <div class="search-box" style="margin-bottom: 0;">
+                        <template v-for="link in users.links" :key="link.label">
+                            <Link v-if="link.url" :href="link.url" :class="link.active ? 'mui-btn mui-btn-contained' : 'mui-btn mui-btn-outlined'" class="mui-btn-sm" v-html="link.label" />
+                            <span v-else class="mui-btn mui-btn-outlined mui-btn-sm" v-html="link.label" />
+                        </template>
                     </div>
                 </div>
             </div>

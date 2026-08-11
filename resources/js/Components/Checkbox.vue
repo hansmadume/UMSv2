@@ -17,18 +17,26 @@ const proxyChecked = computed({
     get() {
         return props.checked;
     },
-
     set(val) {
         emit('update:checked', val);
     },
 });
+
+const handleChange = (event) => {
+    emit('update:checked', event.target.checked);
+};
 </script>
 
 <template>
-    <input
-        type="checkbox"
-        :value="value"
-        v-model="proxyChecked"
-        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
-    />
+    <label class="checkbox-label">
+        <input
+            type="checkbox"
+            class="mui-checkbox"
+            :value="value"
+            :checked="proxyChecked"
+            @change="handleChange"
+        />
+        <span class="checkbox-custom"></span>
+        <slot />
+    </label>
 </template>

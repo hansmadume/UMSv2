@@ -4,19 +4,21 @@ import { Link } from '@inertiajs/vue3';
 </script>
 
 <template>
-    <div
-        class="flex min-h-screen flex-col items-center bg-gray-100 pt-6 sm:justify-center sm:pt-0"
-    >
-        <div>
-            <Link href="/">
-                <ApplicationLogo class="h-20 w-20 fill-current text-gray-500" />
-            </Link>
-        </div>
+    <div class="login-wrapper">
+        <div class="login-card mui-card">
+            <div class="login-header">
+                <div class="login-icon">
+                    <span class="material-icons">admin_panel_settings</span>
+                </div>
+                <h1>User Management System</h1>
+                <p class="login-subtitle">Sign in to your account</p>
+            </div>
 
-        <div
-            class="mt-6 w-full overflow-hidden bg-white px-6 py-4 shadow-md sm:max-w-md sm:rounded-lg"
-        >
             <slot />
+
+            <div class="login-footer">
+                <p>&copy; {{ new Date().getFullYear() }} User Management System. All rights reserved.</p>
+            </div>
         </div>
     </div>
 </template>

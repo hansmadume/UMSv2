@@ -1,3 +1,11 @@
+@import './legacy/style.css';
+@import './legacy/login.css';
+@import './legacy/dashboard.css';
+@import './legacy/user_management.css';
+@import './legacy/user_roles.css';
+@import './legacy/audit_logs.css';
+@import './legacy/profile.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -15,13 +15,24 @@ class RoleController extends Controller
      */
     public function index(Request $request)
     {
-        $roles = Role::withCount('users', 'permissions')
-            ->orderBy('name')
-            ->paginate(10)
-            ->withQueryString();
+        $query = Role::withCount('users', 'permissions');
+
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        $roles = $query->orderBy('name')->paginate(10)->withQueryString();
 
         return inertia('Roles/Index', [
             'roles' => $roles,
+            'filters' => $request->only(['search', 'status']),
         ]);
     }
 
