@@ -39,7 +39,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleString() : '—';
                     </div>
                     <div>
                         <div>Role</div>
-                        <div>{{ user.role?.name ?? '—' }}</div>
+                        <div>{{ user.role?.name || '—' }}</div>
                     </div>
                     <div>
                         <div>Status</div>

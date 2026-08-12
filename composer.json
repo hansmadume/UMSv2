@@ -13,6 +13,7 @@
         "laravel/tinker": "^2.10.1",
         "nyholm/psr7": "*",
         "railsware/mailtrap-php": "*",
+        "spatie/laravel-permission": "*",
         "symfony/http-client": "*",
         "tightenco/ziggy": "^2.0"
     },

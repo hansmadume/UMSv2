@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { usePersistentForm } from '@/composables/usePersistentForm';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -23,8 +24,12 @@ const form = useForm({
     address: props.user.address || '',
 });
 
+const { clear } = usePersistentForm(form, 'users.edit', ['password', 'password_confirmation']);
+
 const submit = () => {
-    form.put(route('users.update', props.user.id));
+    form.put(route('users.update', props.user.id), {
+        onSuccess: () => clear(),
+    });
 };
 </script>
 

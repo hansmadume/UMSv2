@@ -23,7 +23,7 @@ class HandleInertiaRequests extends Middleware
 
         if ($user) {
             $notifications = \App\Models\AuditLog::query()
-                ->when($user->is_admin, function (Builder $query) {
+                ->when($user->hasRole('Administrator'), function (Builder $query) {
                     $query->latest('created_at')->limit(8);
                 }, function (Builder $query) use ($user) {
                     $query->where('user_id', $user->id)->latest('created_at')->limit(8);
@@ -52,9 +52,10 @@ class HandleInertiaRequests extends Middleware
                     'email' => $user->email,
                     'full_name' => $user->full_name,
                     'name' => $user->getDisplayName(),
-                    'role' => $user->role?->name,
-                    'is_admin' => $user->isAdmin(),
-                    'is_manager' => $user->isManager(),
+                    'role' => $user->roles->first()?->name,
+                    'permissions' => $user->permissions->pluck('slug'),
+                    'is_admin' => $user->hasRole('Administrator'),
+                    'is_manager' => $user->hasRole('Manager'),
                     'profile_photo' => $user->profile_photo,
                     'last_login' => $user->last_login?->toIso8601String(),
                     'created_at' => $user->created_at?->toIso8601String(),

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Spatie\Permission\Models\Role as SpatieRole;
 
-class Role extends Model
+class Role extends SpatieRole
 {
     protected $table = 'roles';
 
@@ -13,6 +13,7 @@ class Role extends Model
         'description',
         'icon',
         'status',
+        'guard_name',
     ];
 
     protected $casts = [
@@ -20,49 +21,21 @@ class Role extends Model
         'updated_at' => 'datetime',
     ];
 
-    /**
-     * Get users with this role.
-     */
-    public function users()
-    {
-        return $this->hasMany(User::class, 'role_id');
-    }
-
-    /**
-     * Get permissions assigned to this role.
-     */
-    public function permissions()
-    {
-        return $this->belongsToMany(Permission::class, 'role_permissions', 'role_id', 'permission_id');
-    }
-
-    /**
-     * Check if role is active.
-     */
     public function isActive(): bool
     {
         return $this->status === 'active';
     }
 
-    /**
-     * Check if this is the Administrator role.
-     */
     public function isAdministrator(): bool
     {
         return $this->name === 'Administrator';
     }
 
-    /**
-     * Check if this is the Manager role.
-     */
     public function isManager(): bool
     {
         return $this->name === 'Manager';
     }
 
-    /**
-     * Get role key (lowercase normalized).
-     */
     public function getKey(): string
     {
         $normalized = strtolower(trim($this->name ?? 'guest'));

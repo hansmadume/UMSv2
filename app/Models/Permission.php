@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Spatie\Permission\Models\Permission as SpatiePermission;
 
-class Permission extends Model
+class Permission extends SpatiePermission
 {
     protected $table = 'permissions';
 
@@ -12,19 +12,12 @@ class Permission extends Model
         'name',
         'slug',
         'description',
+        'guard_name',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
     ];
 
-    /**
-     * Get roles assigned this permission.
-     */
-    public function roles()
-    {
-        return $this->belongsToMany(Role::class, 'role_permissions', 'permission_id', 'role_id');
-    }
-
-    public $timestamps = false;
+    public $timestamps = true;
 }

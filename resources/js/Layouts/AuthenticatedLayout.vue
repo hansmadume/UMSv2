@@ -12,7 +12,7 @@ const backendNotifications = computed(() => page.props.notifications || []);
 const flash = computed(() => page.props.flash || {});
 
 const userDisplayName = computed(() => user.value?.full_name || user.value?.username || user.value?.email || 'User');
-const userRoleLabel = computed(() => user.value?.role?.name || (user.value?.is_admin ? 'Administrator' : user.value?.is_manager ? 'Manager' : 'User'));
+const userRoleLabel = computed(() => user.value?.role || (user.value?.is_admin ? 'Administrator' : user.value?.is_manager ? 'Manager' : 'User'));
 
 const notifications = computed(() => {
     const signedInNotification = {
@@ -273,7 +273,7 @@ onUnmounted(() => {
                 </Link>
                 <Link v-if="canManageUsers" :href="route('users.index')" class="nav-item" :class="{ active: route().current('users.*') }">
                     <span class="material-icons">group</span>
-                    <span class="nav-text">Users</span>
+                    <span class="nav-text">Users  {{permissions}}</span>
                 </Link>
                 <Link v-if="isAdmin" :href="route('roles.index')" class="nav-item" :class="{ active: route().current('roles.*') }">
                     <span class="material-icons">security</span>
