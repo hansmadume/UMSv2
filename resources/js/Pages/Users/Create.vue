@@ -91,17 +91,16 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="mui-input-group">
-                            <TextInput id="contact_number" type="text" v-model="form.contact_number" />
-                            <InputLabel for="contact_number" value="Contact Number" />
-                            <InputError :message="form.errors.contact_number" />
-                        </div>
-                        <div class="mui-input-group">
-                            <textarea id="address" v-model="form.address" rows="3" class="mui-input"></textarea>
-                            <InputLabel for="address" value="Address" />
-                            <InputError :message="form.errors.address" />
-                        </div>
+                    <div class="mui-input-group">
+                        <TextInput id="contact_number" type="text" v-model="form.contact_number" />
+                        <InputLabel for="contact_number" value="Contact Number" />
+                        <InputError :message="form.errors.contact_number" />
+                    </div>
+
+                    <div class="mui-input-group">
+                        <TextInput id="address" type="text" v-model="form.address" />
+                        <InputLabel for="address" value="Address" />
+                        <InputError :message="form.errors.address" />
                     </div>
 
                     <div class="form-actions">
