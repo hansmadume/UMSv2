@@ -57,7 +57,6 @@ const closeModal = () => {
                 </p>
 
                 <div class="mui-input-group">
-                    <InputLabel for="password" value="Password" />
                     <TextInput
                         id="password"
                         ref="passwordInput"
@@ -66,6 +65,7 @@ const closeModal = () => {
                         placeholder="Password"
                         @keyup.enter="deleteUser"
                     />
+                    <InputLabel for="password" value="Password" />
                     <InputError :message="form.errors.password" />
                 </div>
 
