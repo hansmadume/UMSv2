@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -10,6 +10,10 @@ const props = defineProps({
 });
 
 const formatDate = (d) => d ? new Date(d).toLocaleString() : '';
+
+const user = computed(() => usePage().props.auth.user || {});
+const userDisplayName = computed(() => user.value?.full_name || user.value?.username || user.value?.email || 'User');
+const userRole = computed(() => user.value?.role?.name || (user.value?.is_admin ? 'Administrator' : user.value?.is_manager ? 'Manager' : 'User'));
 </script>
 
 <template>
@@ -23,6 +27,20 @@ const formatDate = (d) => d ? new Date(d).toLocaleString() : '';
         </template>
 
         <div class="dashboard">
+            <section class="dashboard-hero mui-card">
+                <div>
+                    <p class="dashboard-eyebrow">Welcome back</p>
+                    <h1>Welcome, {{ userDisplayName }}!</h1>
+                    <p class="dashboard-subtitle">You are signed in as <strong>{{ userRole || 'User' }}</strong>.</p>
+                </div>
+                <div class="dashboard-user-badge">
+                    <span class="material-icons">account_circle</span>
+                    <div>
+                        <span class="badge-label">Logged-in User</span>
+                        <strong>{{ userDisplayName }}</strong>
+                    </div>
+                </div>
+            </section>
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">
@@ -57,7 +75,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleString() : '';
                 <div class="mui-card dashboard-card">
                     <div class="card-header">
                         <h3>Recent Users</h3>
-                        <Link v-if="$page.props.auth.user?.is_admin || $page.props.auth.user?.is_manager" :href="route('users.index')" class="mui-btn mui-btn-outlined mui-btn-sm">Manage users &rarr;</Link>
+                        <Link v-if="user?.is_admin || user?.is_manager" :href="route('users.index')" class="mui-btn mui-btn-outlined mui-btn-sm">Manage users &rarr;</Link>
                     </div>
                     <div class="activity-list">
                         <div v-for="u in recentUsers" :key="u.id" class="activity-item">
@@ -78,7 +96,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleString() : '';
                 <div class="mui-card dashboard-card">
                     <div class="card-header">
                         <h3>Recent Activity</h3>
-                        <Link v-if="$page.props.auth.user?.is_admin" :href="route('audit-logs.index')" class="mui-btn mui-btn-outlined mui-btn-sm">View all logs &rarr;</Link>
+                        <Link v-if="user?.is_admin" :href="route('audit-logs.index')" class="mui-btn mui-btn-outlined mui-btn-sm">View all logs &rarr;</Link>
                     </div>
                     <div class="activity-list">
                         <div v-for="log in recentLogs" :key="log.id" class="activity-item">

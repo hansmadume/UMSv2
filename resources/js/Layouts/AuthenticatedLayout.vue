@@ -8,20 +8,36 @@ const user = computed(() => page.props.auth.user);
 const isAdmin = computed(() => user.value?.is_admin);
 const isManager = computed(() => user.value?.is_manager);
 const canManageUsers = computed(() => isAdmin.value || isManager.value);
-const notifications = computed(() => page.props.notifications || []);
+const backendNotifications = computed(() => page.props.notifications || []);
 const flash = computed(() => page.props.flash || {});
 
-const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+const userDisplayName = computed(() => user.value?.full_name || user.value?.username || user.value?.email || 'User');
+const userRoleLabel = computed(() => user.value?.role?.name || (user.value?.is_admin ? 'Administrator' : user.value?.is_manager ? 'Manager' : 'User'));
+
+const notifications = computed(() => {
+    const signedInNotification = {
+        id: 'signed-in',
+        title: 'Signed in as ' + userRoleLabel.value,
+        message: (userRoleLabel.value || 'User') + ' access is active. You can monitor users, roles, and audit activity.',
+        time: new Date().toISOString(),
+        icon: 'verified_user',
+        read: false,
+    };
+    return [signedInNotification, ...backendNotifications.value];
+});
 
 const notificationCount = computed(() => notifications.value.length);
 const currentPage = computed(() => {
     const component = page.component;
-    const match = component.match(/Pages[\\/]([^\\/]+)/);
-    return match ? match[1].toLowerCase() : 'dashboard';
+    const match = component.match(/^([^\\/]+)/);
+    if (!match) return 'dashboard';
+    const raw = match[1];
+    const withSpaces = raw.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ');
+    return withSpaces.toLowerCase();
 });
 
-const notificationKey = ref('');
 const notificationPanelOpen = ref(false);
+const notificationsRead = ref(false);
 const logoutModalOpen = ref(false);
 
 watch(logoutModalOpen, (isOpen) => {
@@ -101,20 +117,14 @@ const toggleNotificationPanel = () => {
         toggle.setAttribute('aria-expanded', String(notificationPanelOpen.value));
     }
     if (notificationPanelOpen.value) {
-        markNotificationsRead();
+        notificationsRead.value = true;
+        try { localStorage.setItem('ums-notifications-read', 'true'); } catch {}
     }
 };
 
 const markNotificationsRead = () => {
-    try {
-        if (notificationKey.value) {
-            localStorage.setItem('ums-read-notifications', notificationKey.value);
-        }
-    } catch {}
-    const badge = document.querySelector('.notification-badge');
-    if (badge) {
-        badge.remove();
-    }
+    notificationsRead.value = true;
+    try { localStorage.setItem('ums-notifications-read', 'true'); } catch {}
 };
 
 const closeNotificationPanel = () => {
@@ -123,6 +133,13 @@ const closeNotificationPanel = () => {
     const toggle = document.querySelector('.notification-toggle');
     if (panel) panel.hidden = true;
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
+};
+
+const formatNotificationTime = (time) => {
+    if (!time) return '';
+    const date = new Date(time);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString();
 };
 
 const logout = () => {
@@ -199,17 +216,11 @@ onMounted(() => {
     const notificationPanel = document.getElementById('notificationPanel');
 
     if (notificationToggle && notificationPanel) {
-        notificationKey.value = notificationToggle.getAttribute('data-notification-key') || '';
-        const storageKey = 'ums-read-notifications';
-
-        const clearBadge = () => {
-            const badge = notificationToggle.querySelector('.notification-badge');
-            if (badge) badge.remove();
-        };
+        const storageKey = 'ums-notifications-read';
 
         try {
-            if (notificationKey.value && localStorage.getItem(storageKey) === notificationKey.value) {
-                clearBadge();
+            if (localStorage.getItem(storageKey) === 'true') {
+                notificationsRead.value = true;
             }
         } catch {}
 
@@ -288,7 +299,7 @@ onUnmounted(() => {
             <header class="topbar">
                 <div class="topbar-left">
                     <span class="material-icons topbar-menu-icon" id="menuToggle">menu</span>
-                    <h3 class="topbar-title">{{ currentPage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}</h3>
+                    <h3 class="topbar-title">{{ currentPage.replace(/\b\w/g, l => l.toUpperCase()) }}</h3>
                 </div>
                 <div class="topbar-right">
                     <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">
@@ -312,24 +323,19 @@ onUnmounted(() => {
                             type="button"
                             aria-label="Open notifications"
                             aria-expanded="false"
-                            data-notification-key="current"
                         >
                             <span class="material-icons">notifications</span>
-                            <span v-if="notificationCount > 0" class="notification-badge">{{ Math.min(notificationCount, 9) }}</span>
+                            <span v-if="notificationCount > 0 && !notificationsRead" class="notification-badge">{{ Math.min(notificationCount, 9) }}</span>
                         </button>
                         <div id="notificationPanel" class="notification-panel" hidden>
                             <div class="notification-panel-header">
                                 <div>
                                     <h4>Notifications</h4>
-                                    <p>You have {{ notificationCount }} notification{{ notificationCount === 1 ? '' : 's' }}</p>
+                                    <p>{{ notificationCount }} updates</p>
                                 </div>
-                                <span class="material-icons">notifications_active</span>
+                                <span class="material-icons">campaign</span>
                             </div>
                             <div class="notification-list">
-                                <div v-if="!notifications.length" class="notification-empty">
-                                    <span class="material-icons">inbox</span>
-                                    <span>No notifications yet.</span>
-                                </div>
                                 <div
                                     v-for="item in notifications"
                                     :key="item.id"
@@ -342,7 +348,7 @@ onUnmounted(() => {
                                     <div class="notification-item-content">
                                         <strong>{{ item.title }}</strong>
                                         <p>{{ item.message }}</p>
-                                        <small v-if="item.time">{{ new Date(item.time).toLocaleString() }}</small>
+                                        <small>{{ formatNotificationTime(item.time) }}</small>
                                     </div>
                                 </div>
                             </div>
@@ -370,7 +376,7 @@ onUnmounted(() => {
 
                 <slot name="header">
                     <div class="section-header">
-                        <h2 class="topbar-title" style="font-size: 1.5rem;">{{ currentPage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}</h2>
+                        <h2 class="topbar-title" style="font-size: 1.5rem;">{{ currentPage.replace(/\b\w/g, l => l.toUpperCase()) }}</h2>
                     </div>
                 </slot>
 
