@@ -76,7 +76,7 @@ html {
 }
 
 body {
-    font-family: "Roboto", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background-color: var(--black-primary);
     color: var(--text-primary);
     line-height: 1.6;
@@ -706,7 +706,7 @@ html[data-theme="light"] .notification-panel::before {
     width: 100%;
     padding: 24px 12px 6px;
     font-size: 1rem;
-    font-family: "Roboto", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: var(--text-primary);
     background-color: transparent;
     border: none;
@@ -745,7 +745,7 @@ html[data-theme="light"] .notification-panel::before {
     color: var(--text-muted);
     pointer-events: none;
     transition: all var(--transition-fast);
-    font-family: "Roboto", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background-color: var(--black-secondary);
     padding: 0 4px;
     border-radius: 2px;
@@ -932,7 +932,7 @@ select.mui-input option {
     width: 100%;
     padding: 16px 12px 8px;
     font-size: 1rem;
-    font-family: "Roboto", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: var(--text-primary);
     background-color: transparent;
     border: none;
@@ -994,7 +994,7 @@ select.mui-input option {
     gap: 8px;
     padding: 10px 24px;
     font-size: 0.875rem;
-    font-family: "Roboto", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
