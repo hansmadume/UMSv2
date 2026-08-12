@@ -28,12 +28,6 @@ watch(search, () => {
     }, 400);
 });
 
-const resetFilters = () => {
-    search.value = '';
-    action.value = '';
-    applyFilters();
-};
-
 const formatDate = (d) => d ? new Date(d).toLocaleString() : '—';
 </script>
 
@@ -58,7 +52,6 @@ const formatDate = (d) => d ? new Date(d).toLocaleString() : '—';
                             <option v-for="a in actions" :key="a" :value="a">{{ a }}</option>
                         </select>
                     </div>
-                    <button @click="resetFilters" class="mui-btn mui-btn-outlined mui-btn-sm">Reset</button>
                 </div>
 
                 <div class="mui-table-container">

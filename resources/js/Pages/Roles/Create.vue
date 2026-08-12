@@ -46,13 +46,13 @@ const submit = () => {
                 <form @submit.prevent="submit" class="user-form">
                     <div class="form-grid">
                         <div class="mui-input-group">
-                            <InputLabel for="name" value="Role Name" />
                             <TextInput id="name" v-model="form.name" required />
+                            <InputLabel for="name" value="Role Name" />
                             <InputError :message="form.errors.name" />
                         </div>
                         <div class="mui-input-group">
-                            <InputLabel for="description" value="Description" />
                             <TextInput id="description" v-model="form.description" />
+                            <InputLabel for="description" value="Description" />
                             <InputError :message="form.errors.description" />
                         </div>
                         <div class="mui-input-group">
@@ -61,10 +61,12 @@ const submit = () => {
                                 <option value="inactive">Inactive</option>
                             </select>
                             <InputLabel for="status" value="Status" />
+                            <InputError :message="form.errors.status" />
                         </div>
                         <div class="mui-input-group">
-                            <InputLabel for="icon" value="Icon (e.g. shield, user)" />
                             <TextInput id="icon" v-model="form.icon" />
+                            <InputLabel for="icon" value="Icon" />
+                            <InputError :message="form.errors.icon" />
                         </div>
                     </div>
 
