@@ -42,7 +42,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleString() : '—';
     <AuthenticatedLayout>
         <template #header>
             <div class="section-header">
-                <h2>Audit Logs</h2>
+                <h2>Audit Log</h2>
             </div>
         </template>
 
