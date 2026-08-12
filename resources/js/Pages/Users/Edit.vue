@@ -91,7 +91,7 @@ const submit = () => {
                         <InputError :message="form.errors.contact_number" />
                     </div>
                     <div class="mui-input-group">
-                        <textarea id="address" v-model="form.address" rows="3" class="mui-input"></textarea>
+                        <TextInput id="address" v-model="form.address" />
                         <InputLabel for="address" value="Address" />
                         <InputError :message="form.errors.address" />
                     </div>
