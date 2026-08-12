@@ -23,14 +23,12 @@ class EnsureUserHasRole
             return redirect()->route('login');
         }
 
-        $roleName = $user->role?->name;
-
         // Administrators always pass.
-        if ($roleName === 'Administrator') {
+        if ($user->hasRole('Administrator')) {
             return $next($request);
         }
 
-        if (! $roleName || ! in_array($roleName, $roles, true)) {
+        if (! $user->hasAnyRole($roles)) {
             abort(403, 'You do not have permission to access this resource.');
         }
 

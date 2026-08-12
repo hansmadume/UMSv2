@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { usePersistentForm } from '@/composables/usePersistentForm';
 
 const props = defineProps({
     roles: { type: Array, default: () => [] },
@@ -22,8 +23,12 @@ const form = useForm({
     address: '',
 });
 
+const { clear } = usePersistentForm(form, 'users.create', ['password', 'password_confirmation']);
+
 const submit = () => {
-    form.post(route('users.store'));
+    form.post(route('users.store'), {
+        onSuccess: () => clear(),
+    });
 };
 </script>
 

@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { usePersistentForm } from '@/composables/usePersistentForm';
 
 const props = defineProps({
     role: { type: Object, required: true },
@@ -21,6 +22,8 @@ const form = useForm({
     permissions: [...props.assignedPermissions],
 });
 
+const { clear } = usePersistentForm(form, 'roles.edit');
+
 const togglePermission = (id) => {
     if (form.permissions.includes(id)) {
         form.permissions = form.permissions.filter(p => p !== id);
@@ -30,7 +33,9 @@ const togglePermission = (id) => {
 };
 
 const submit = () => {
-    form.put(route('roles.update', props.role.id));
+    form.put(route('roles.update', props.role.id), {
+        onSuccess: () => clear(),
+    });
 };
 </script>
 

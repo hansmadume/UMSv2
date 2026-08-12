@@ -13,7 +13,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleString() : '';
 
 const user = computed(() => usePage().props.auth.user || {});
 const userDisplayName = computed(() => user.value?.full_name || user.value?.username || user.value?.email || 'User');
-const userRole = computed(() => user.value?.role?.name || (user.value?.is_admin ? 'Administrator' : user.value?.is_manager ? 'Manager' : 'User'));
+const userRole = computed(() => user.value?.role || (user.value?.is_admin ? 'Administrator' : user.value?.is_manager ? 'Manager' : 'User'));
 </script>
 
 <template>
@@ -83,7 +83,7 @@ const userRole = computed(() => user.value?.role?.name || (user.value?.is_admin 
                                 <div class="activity-text"><strong>{{ u.full_name || u.username }}</strong></div>
                                 <div class="activity-time">{{ u.email }}</div>
                             </div>
-                            <div class="activity-time">{{ u.role?.name ?? 'No role' }}</div>
+                             <div class="activity-time">{{ u.role?.name || 'No role' }}</div>
                         </div>
                         <div v-if="!recentUsers.length" class="activity-item">
                             <div class="activity-info">

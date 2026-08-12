@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { usePersistentForm } from '@/composables/usePersistentForm';
 
 const props = defineProps({
     permissions: { type: Array, default: () => [] },
@@ -19,6 +20,8 @@ const form = useForm({
     permissions: [],
 });
 
+const { clear } = usePersistentForm(form, 'roles.create');
+
 const togglePermission = (id) => {
     if (form.permissions.includes(id)) {
         form.permissions = form.permissions.filter(p => p !== id);
@@ -28,7 +31,9 @@ const togglePermission = (id) => {
 };
 
 const submit = () => {
-    form.post(route('roles.store'));
+    form.post(route('roles.store'), {
+        onSuccess: () => clear(),
+    });
 };
 </script>
 

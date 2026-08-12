@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
@@ -21,18 +22,19 @@ Route::middleware(['auth', 'inactivity'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // User Management - administrator and manager
-    Route::middleware(['role:administrator,manager'])->group(function () {
+    Route::middleware(['role:Administrator,Manager'])->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
         Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
     });
 
     // Roles Management - administrator only
-    Route::middleware(['role:administrator'])->group(function () {
+    Route::middleware(['role:Administrator'])->group(function () {
         Route::resource('roles', RoleController::class);
+        Route::resource('permissions', PermissionController::class);
     });
 
     // Audit Logs - administrator only
-    Route::middleware(['role:administrator'])->group(function () {
+    Route::middleware(['role:Administrator'])->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     });
 });

@@ -11,12 +11,9 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of users.
-     */
     public function index(Request $request)
     {
-        $query = User::with('role');
+        $query = User::with('roles', 'role');
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -31,7 +28,9 @@ class UserController extends Controller
         }
 
         if ($roleId = $request->input('role_id')) {
-            $query->where('role_id', $roleId);
+            $query->whereHas('roles', function ($q) use ($roleId) {
+                $q->where('roles.id', $roleId);
+            });
         }
 
         $users = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
@@ -44,18 +43,12 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * Show the form for creating a new user.
-     */
     public function create()
     {
         $roles = Role::where('status', 'active')->orderBy('name')->get();
         return inertia('Users/Create', ['roles' => $roles]);
     }
 
-    /**
-     * Store a newly created user.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -75,11 +68,13 @@ class UserController extends Controller
             'full_name' => $validated['full_name'],
             'name' => $validated['full_name'],
             'password_hash' => Hash::make($validated['password']),
-            'role_id' => $validated['role_id'],
             'status' => $validated['status'],
             'contact_number' => $validated['contact_number'] ?? null,
             'address' => $validated['address'] ?? null,
         ]);
+
+        $role = Role::findOrFail($validated['role_id']);
+        $user->assignRole($role);
 
         AuditLog::create([
             'user_id' => $request->user()?->id,
@@ -92,18 +87,12 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('success', 'User created successfully.');
     }
 
-    /**
-     * Display the specified user.
-     */
     public function show(User $user)
     {
-        $user->load('role');
+        $user->load('roles');
         return inertia('Users/Show', ['user' => $user]);
     }
 
-    /**
-     * Show the form for editing the specified user.
-     */
     public function edit(User $user)
     {
         $roles = Role::where('status', 'active')->orderBy('name')->get();
@@ -113,9 +102,6 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * Update the specified user.
-     */
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
@@ -133,7 +119,6 @@ class UserController extends Controller
         $user->email = $validated['email'];
         $user->full_name = $validated['full_name'];
         $user->name = $validated['full_name'];
-        $user->role_id = $validated['role_id'];
         $user->status = $validated['status'];
         $user->contact_number = $validated['contact_number'] ?? null;
         $user->address = $validated['address'] ?? null;
@@ -143,6 +128,9 @@ class UserController extends Controller
         }
 
         $user->save();
+
+        $role = Role::findOrFail($validated['role_id']);
+        $user->syncRoles([$role]);
 
         AuditLog::create([
             'user_id' => $request->user()?->id,
@@ -155,9 +143,6 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('success', 'User updated successfully.');
     }
 
-    /**
-     * Soft delete the specified user.
-     */
     public function destroy(Request $request, User $user)
     {
         $user->status = 'inactive';

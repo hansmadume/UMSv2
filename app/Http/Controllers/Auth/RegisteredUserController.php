@@ -46,10 +46,13 @@ class RegisteredUserController extends Controller
             'name' => $request->full_name,
             'username' => $request->username,
             'email' => $request->email,
-            'password_hash' => $request->password, // hashed via mutator
+            'password_hash' => $request->password,
             'status' => 'active',
-            'role_id' => $guestRole?->id,
         ]);
+
+        if ($guestRole) {
+            $user->assignRole($guestRole);
+        }
 
         AuditLog::create([
             'user_id' => $user->id,
