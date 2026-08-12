@@ -41,67 +41,67 @@ const submit = () => {
             <div class="mui-card">
                 <form @submit.prevent="submit" class="user-form">
                     <div class="mui-input-group">
-                        <InputLabel for="full_name" value="Full Name" />
                         <TextInput id="full_name" v-model="form.full_name" required />
+                        <InputLabel for="full_name" value="Full Name" />
                         <InputError :message="form.errors.full_name" />
                     </div>
 
                     <div class="form-grid">
                         <div class="mui-input-group">
-                            <InputLabel for="username" value="Username" />
                             <TextInput id="username" v-model="form.username" required />
+                            <InputLabel for="username" value="Username" />
                             <InputError :message="form.errors.username" />
                         </div>
                         <div class="mui-input-group">
-                            <InputLabel for="email" value="Email" />
                             <TextInput id="email" type="email" v-model="form.email" required />
+                            <InputLabel for="email" value="Email" />
                             <InputError :message="form.errors.email" />
                         </div>
                     </div>
 
                     <div class="form-grid">
                         <div class="mui-input-group">
-                            <InputLabel for="password" value="Password" />
                             <TextInput id="password" type="password" v-model="form.password" required />
+                            <InputLabel for="password" value="Password" />
                             <InputError :message="form.errors.password" />
                         </div>
                         <div class="mui-input-group">
-                            <InputLabel for="password_confirmation" value="Confirm Password" />
                             <TextInput id="password_confirmation" type="password" v-model="form.password_confirmation" required />
+                            <InputLabel for="password_confirmation" value="Confirm Password" />
                             <InputError :message="form.errors.password_confirmation" />
                         </div>
                     </div>
 
                     <div class="form-grid">
                         <div class="mui-input-group">
+                            <select id="role_id" v-model="form.role_id" required class="mui-input">
+                                <option value="">Select a role</option>
+                                <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+                            </select>
                             <InputLabel for="role_id" value="Role" />
-                            <div class="mui-select-group">
-                                <select id="role_id" v-model="form.role_id" required class="mui-select">
-                                    <option value="">Select a role</option>
-                                    <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
-                                </select>
-                            </div>
                             <InputError :message="form.errors.role_id" />
                         </div>
                         <div class="mui-input-group">
+                            <select id="status" v-model="form.status" required class="mui-input">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
                             <InputLabel for="status" value="Status" />
-                            <div class="mui-select-group">
-                                <select id="status" v-model="form.status" required class="mui-select">
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                </select>
-                            </div>
+                            <InputError :message="form.errors.status" />
                         </div>
                     </div>
 
-                    <div class="mui-input-group">
-                        <InputLabel for="contact_number" value="Contact Number" />
-                        <TextInput id="contact_number" v-model="form.contact_number" />
-                    </div>
-
-                    <div class="mui-input-group">
-                        <InputLabel for="address" value="Address" />
-                        <textarea id="address" v-model="form.address" rows="3" class="mui-input"></textarea>
+                    <div class="form-grid">
+                        <div class="mui-input-group">
+                            <TextInput id="contact_number" type="text" v-model="form.contact_number" />
+                            <InputLabel for="contact_number" value="Contact Number" />
+                            <InputError :message="form.errors.contact_number" />
+                        </div>
+                        <div class="mui-input-group">
+                            <textarea id="address" v-model="form.address" rows="3" class="mui-input"></textarea>
+                            <InputLabel for="address" value="Address" />
+                            <InputError :message="form.errors.address" />
+                        </div>
                     </div>
 
                     <div class="form-actions">

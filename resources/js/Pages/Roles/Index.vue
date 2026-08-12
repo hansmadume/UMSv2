@@ -31,12 +31,6 @@ watch(search, () => {
     }, 400);
 });
 
-const resetFilters = () => {
-    search.value = "";
-    status.value = "";
-    applyFilters();
-};
-
 const deleteRole = (r) => {
     if (confirm(`Delete role "${r.name}"?`)) {
         router.delete(route("roles.destroy", r.id));
@@ -82,12 +76,6 @@ const deleteRole = (r) => {
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
-                    <button
-                        @click="resetFilters"
-                        class="mui-btn mui-btn-outlined mui-btn-sm"
-                    >
-                        Reset
-                    </button>
                 </div>
 
                 <div class="mui-table-container">
