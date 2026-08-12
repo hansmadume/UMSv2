@@ -782,6 +782,20 @@ html[data-theme="light"] .notification-panel::before {
     color: var(--green-light);
 }
 
+select.mui-input {
+    padding-right: 36px;
+    cursor: pointer;
+    background-color: var(--black-secondary);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+select.mui-input option {
+    background-color: var(--black-secondary);
+    color: var(--text-primary);
+}
+
 .profile-form-card {
     display: grid;
     gap: 20px;
