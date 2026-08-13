@@ -36,7 +36,7 @@ class Role extends SpatieRole
         return $this->name === 'Manager';
     }
 
-    public function getKey(): string
+    public function getRoleKey(): string
     {
         $normalized = strtolower(trim($this->name ?? 'guest'));
 

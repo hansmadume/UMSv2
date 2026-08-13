@@ -23,7 +23,20 @@ Route::middleware(['auth', 'inactivity'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Support
-    Route::post('/contact-support', [SupportController::class, 'store'])->name('support.store');
+    Route::middleware(['role:Administrator,Support Staff'])->group(function () {
+        Route::get('/support', [SupportController::class, 'dashboard'])->name('support.dashboard');
+        Route::get('/support/tickets', [SupportController::class, 'index'])->name('support.index');
+        Route::get('/support/my-tickets', [SupportController::class, 'myTickets'])->name('support.my-tickets');
+        Route::get('/support/tickets/create', [SupportController::class, 'create'])->name('support.create');
+        Route::post('/support/tickets', [SupportController::class, 'store'])->name('support.store');
+    });
+
+    Route::middleware(['auth', 'inactivity'])->group(function () {
+        Route::get('/support/tickets/{ticket}', [SupportController::class, 'show'])->name('support.show');
+        Route::put('/support/tickets/{ticket}', [SupportController::class, 'update'])->name('support.update');
+    });
+
+    Route::post('/contact-support', [SupportController::class, 'storeContact'])->name('support.contact.store');
 
     // User Management - administrator and manager
     Route::middleware(['role:Administrator,Manager'])->group(function () {

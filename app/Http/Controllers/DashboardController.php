@@ -18,7 +18,7 @@ class DashboardController extends Controller
         $totalRoles = Role::where('status', 'active')->count();
         $totalLogs = AuditLog::count();
 
-        $recentUsers = User::with('role')
+        $recentUsers = User::with(['role', 'roles'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();

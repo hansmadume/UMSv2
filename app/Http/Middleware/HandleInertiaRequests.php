@@ -53,7 +53,7 @@ class HandleInertiaRequests extends Middleware
                     'full_name' => $user->full_name,
                     'name' => $user->getDisplayName(),
                     'role' => $user->roles->first()?->name,
-                    'permissions' => $user->permissions->pluck('slug'),
+                    'permissions' => $user->getAllPermissions()->pluck('slug'),
                     'is_admin' => $user->hasRole('Administrator'),
                     'is_manager' => $user->hasRole('Manager'),
                     'profile_photo' => $user->profile_photo,

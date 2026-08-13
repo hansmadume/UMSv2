@@ -5,7 +5,6 @@ import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
 import { Head, useForm } from "@inertiajs/vue3";
-import { usePersistentForm } from "@/composables/usePersistentForm";
 
 const props = defineProps({
     permission: { type: Object, required: true },
@@ -17,12 +16,8 @@ const form = useForm({
     description: props.permission.description || "",
 });
 
-const { clear } = usePersistentForm(form, 'permissions.edit');
-
 const submit = () => {
-    form.put(route("permissions.update", props.permission.id), {
-        onSuccess: () => clear(),
-    });
+    form.put(route("permissions.update", props.permission.id));
 };
 </script>
 

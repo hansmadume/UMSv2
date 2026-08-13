@@ -10,12 +10,18 @@ class SupportTicket extends Model
     protected $table = 'support_tickets';
 
     protected $fillable = [
+        'ticket_id',
+        'subject',
+        'category',
         'user_id',
         'username',
         'email',
         'comments',
         'attachment_path',
+        'internal_notes',
         'status',
+        'priority',
+        'assigned_to',
     ];
 
     protected function casts(): array
@@ -29,5 +35,10 @@ class SupportTicket extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 }

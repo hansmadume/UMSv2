@@ -8,7 +8,16 @@ const page = usePage();
 const user = computed(() => page.props.auth.user);
 const isAdmin = computed(() => user.value?.is_admin);
 const isManager = computed(() => user.value?.is_manager);
+const userRole = computed(() => user.value?.role);
 const canManageUsers = computed(() => isAdmin.value || isManager.value);
+const canViewSupportDashboard = computed(() => {
+    const perms = user.value?.permissions || [];
+    return isAdmin.value || userRole.value === 'Support Staff' || perms.includes('tickets.view');
+});
+const canViewOwnTickets = computed(() => {
+    const perms = user.value?.permissions || [];
+    return perms.includes('tickets.view');
+});
 const backendNotifications = computed(() => page.props.notifications || []);
 const flash = computed(() => page.props.flash || {});
 
@@ -281,9 +290,17 @@ onUnmounted(() => {
                     <span class="material-icons">dashboard</span>
                     <span class="nav-text">Dashboard</span>
                 </Link>
+                <Link v-if="canViewSupportDashboard" :href="route('support.dashboard')" class="nav-item" :class="{ active: route().current('support.dashboard') }">
+                    <span class="material-icons">support_agent</span>
+                    <span class="nav-text">Support Dashboard</span>
+                </Link>
+                <Link v-if="canViewOwnTickets" :href="userRole === 'Support Staff' ? route('support.my-tickets') : route('support.index')" class="nav-item" :class="{ active: route().current('support.index') || route().current('support.my-tickets') }">
+                    <span class="material-icons">confirmation_number</span>
+                    <span class="nav-text">My Tickets</span>
+                </Link>
                 <Link v-if="canManageUsers" :href="route('users.index')" class="nav-item" :class="{ active: route().current('users.*') }">
                     <span class="material-icons">group</span>
-                    <span class="nav-text">Users  {{permissions}}</span>
+                    <span class="nav-text">Users</span>
                 </Link>
                 <Link v-if="isAdmin" :href="route('roles.index')" class="nav-item" :class="{ active: route().current('roles.*') }">
                     <span class="material-icons">security</span>

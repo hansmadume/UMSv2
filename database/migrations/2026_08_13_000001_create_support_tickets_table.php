@@ -10,9 +10,9 @@ return new class extends Migration
     {
         Schema::create('support_tickets', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('username');
-            $table->string('email');
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('username')->nullable();
+            $table->string('email')->nullable();
             $table->text('comments');
             $table->string('attachment_path')->nullable();
             $table->string('status')->default('open');

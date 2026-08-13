@@ -131,7 +131,7 @@ const formatDate = (d) => (d ? new Date(d).toLocaleDateString() : "—");
                                 <td>{{ u.full_name || "—" }}</td>
                                 <td>{{ u.username }}</td>
                                 <td>{{ u.email }}</td>
-                                <td>{{ u.role?.name || "—" }}</td>
+                                <td>{{ u.roles?.[0]?.name || u.role?.name || "—" }}</td>
                                 <td>
                                     <span :class="['status-badge', u.status]">{{
                                         u.status
