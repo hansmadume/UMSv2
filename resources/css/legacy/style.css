@@ -729,9 +729,9 @@ html[data-theme="light"] .notification-panel::before {
     border-bottom-color: var(--green-light);
 }
 
-.mui-input:focus + .mui-label,
-.mui-input:not(:placeholder-shown) + .mui-label,
-.mui-input[readonly] + .mui-label {
+.mui-input-group:has(.mui-input:focus) .mui-label,
+.mui-input-group:has(.mui-input:not(:placeholder-shown)) .mui-label,
+.mui-input-group:has(.mui-input[readonly]) .mui-label {
     transform: translateY(-26px);
     font-size: 0.75rem;
     color: var(--green-light);
@@ -775,8 +775,8 @@ html[data-theme="light"] .notification-panel::before {
     border-bottom-color: var(--green-light);
 }
 
-.mui-input:-webkit-autofill + .mui-label,
-.mui-input:-webkit-autofill:hover + .mui-label {
+.mui-input-group:has(.mui-input:-webkit-autofill) .mui-label,
+.mui-input-group:has(.mui-input:-webkit-autofill:hover) .mui-label {
     transform: translateY(-26px);
     font-size: 0.75rem;
     color: var(--green-light);

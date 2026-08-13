@@ -132,13 +132,13 @@
   border-bottom-color: var(--black-border);
 }
 
-.profile-form .mui-input[readonly] + .mui-label,
-.profile-form .mui-input:read-only + .mui-label {
+.profile-form .mui-input-group:has(.mui-input[readonly]) .mui-label,
+.profile-form .mui-input-group:has(.mui-input:read-only) .mui-label {
   color: var(--text-muted);
 }
 
-.profile-form .mui-input[readonly]:focus + .mui-label,
-.profile-form .mui-input:read-only:focus + .mui-label {
+.profile-form .mui-input-group:has(.mui-input[readonly]:focus) .mui-label,
+.profile-form .mui-input-group:has(.mui-input:read-only:focus) .mui-label {
   color: var(--text-muted);
 }
 
