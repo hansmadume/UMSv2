@@ -1,10 +1,10 @@
 <template>
-    <Head :title="'Ticket ' + ticket.ticket_id" />
+    <Head :title="(isMyTicket ? 'My Ticket' : 'Ticket') + ' ' + ticket.ticket_id" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="section-header">
-                <h2>Ticket {{ ticket.ticket_id }}</h2>
+                <h2>{{ isMyTicket ? 'My Ticket' : 'Ticket' }} {{ ticket.ticket_id }}</h2>
             </div>
         </template>
 
@@ -13,12 +13,11 @@
                 <div class="ticket-header">
                     <div>
                         <h3>{{ ticket.subject }}</h3>
-                        <div class="ticket-meta">
-                            <span class="ticket-id">#{{ ticket.ticket_id }}</span>
-                            <span class="ticket-category">{{ ticket.category }}</span>
-                            <span :class="['priority-badge', ticket.priority]">{{ ticket.priority }}</span>
-                            <span :class="['status-badge', ticket.status]">{{ ticket.status }}</span>
-                        </div>
+                            <div class="ticket-meta">
+                                <span class="ticket-id">#{{ ticket.ticket_id }}</span>
+                                <span :class="['priority-badge', ticket.priority]">{{ ticket.priority }}</span>
+                                <span :class="['status-badge', ticket.status]">{{ ticket.status }}</span>
+                            </div>
                     </div>
                     <div class="ticket-actions" v-if="canManageTicket">
                         <select v-model="ticket.status" class="mui-select" @change="updateTicket('status', $event.target.value)">
@@ -41,30 +40,81 @@
                 </div>
 
                 <div class="ticket-section">
-                    <h4>Description</h4>
-                    <p class="ticket-description">{{ ticket.comments }}</p>
-                    <div v-if="ticket.attachment_path" class="ticket-attachment">
-                        <span class="material-icons">attach_file</span>
-                        <a :href="'/storage/' + ticket.attachment_path" target="_blank">View Attachment</a>
+                    <h4>Conversation</h4>
+                    <div class="conversation">
+                        <div class="message customer-message">
+                            <div class="message-bubble">
+                                <div class="message-header">
+                                    <span class="message-author">{{ ticket.username || 'You' }}</span>
+                                    <span class="message-time">{{ formatDate(ticket.created_at) }}</span>
+                                </div>
+                                <p class="message-text">{{ ticket.comments }}</p>
+                                <div v-if="ticket.attachment_path" class="message-attachment">
+                                    <span class="material-icons">attach_file</span>
+                                    <a :href="'/storage/' + ticket.attachment_path" target="_blank">View Attachment</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-for="msg in sortedMessages" :key="msg.id" class="message" :class="msg.user_id === user.id ? 'customer-message' : 'support-message'">
+                            <div class="message-bubble">
+                                <div class="message-header">
+                                    <span class="message-author">{{ msg.user_id === user.id ? 'You' : (msg.user?.name || msg.user?.username || 'Support Staff') }}</span>
+                                    <span class="message-time">{{ formatDate(msg.created_at) }}</span>
+                                </div>
+                                <p class="message-text">{{ msg.message }}</p>
+                                <div v-if="msg.attachment_path" class="message-attachment">
+                                    <span class="material-icons">attach_file</span>
+                                    <a :href="'/storage/' + msg.attachment_path" target="_blank">View Attachment</a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="ticket-section" v-if="canAddNotes">
-                    <h4>Internal Notes</h4>
-                    <textarea
-                        v-model="internalNotes"
-                        rows="3"
-                        class="mui-textarea"
-                        placeholder="Add internal notes..."
-                    ></textarea>
-                    <button type="button" class="mui-btn mui-btn-contained mui-btn-sm" @click="updateTicket('internal_notes', internalNotes)">
-                        Save Notes
-                    </button>
+                <div v-if="!canReply" class="ticket-section reply-email-notice">
+                    <h4>Reply to This Ticket</h4>
+                    <p>To reply to this ticket, please use the reply button in the email you received when this ticket was created. Our support team will respond to your message.</p>
                 </div>
 
-                <div class="ticket-section" v-if="ticket.internal_notes">
-                    <h4>Notes</h4>
-                    <p class="internal-notes-text">{{ ticket.internal_notes }}</p>
+                <div v-if="canReply" class="ticket-section reply-section">
+                    <h4>Reply</h4>
+                    <form @submit.prevent="submitReply">
+                        <textarea
+                            v-model="replyText"
+                            rows="4"
+                            class="mui-textarea"
+                            placeholder="Type your reply..."
+                            required
+                            :disabled="replyStatus === 'sending'"
+                        ></textarea>
+                        <div class="reply-actions">
+                            <input
+                                type="file"
+                                id="reply_attachment"
+                                @change="onFileChange"
+                                class="mui-file-input"
+                                :disabled="replyStatus === 'sending'"
+                            />
+                            <label for="reply_attachment" class="mui-file-label">
+                                <span class="material-icons">attach_file</span>
+                                {{ replyAttachment ? replyAttachment.name : 'Attach files' }}
+                            </label>
+                            <button type="submit" class="mui-btn mui-btn-contained" :disabled="replyStatus === 'sending'">
+                                <span v-if="replyStatus === 'sending'" class="material-icons spin">refresh</span>
+                                <span v-else-if="replyStatus === 'sent'" class="material-icons">check</span>
+                                <span v-else-if="replyStatus === 'error'" class="material-icons">error</span>
+                                <span v-else class="material-icons">send</span>
+                                {{ replyStatus === 'sending' ? 'Sending...' : replyStatus === 'sent' ? 'Sent' : replyStatus === 'error' ? 'Failed' : 'Send Reply' }}
+                            </button>
+                        </div>
+                        <div v-if="replyStatus === 'sent'" class="reply-status reply-status-success">
+                            Reply sent successfully. The customer will receive an email notification.
+                        </div>
+                        <div v-if="replyStatus === 'error'" class="reply-status reply-status-error">
+                            {{ replyError }}
+                        </div>
+                    </form>
                 </div>
 
                 <div class="ticket-footer">
@@ -72,39 +122,11 @@
                         <span>Created: {{ formatDate(ticket.created_at) }}</span>
                         <span>Updated: {{ formatDate(ticket.updated_at) }}</span>
                     </div>
-                    <div class="ticket-people">
+                    <div class="ticket-people" v-if="canManageTicket">
                         <span>Created By: {{ ticket.username || 'Anonymous' }}</span>
                         <span v-if="ticket.assignedTo">Assigned To: {{ ticket.assignedTo.name || ticket.assignedTo.username }}</span>
                     </div>
                 </div>
-            </div>
-
-            <div v-if="canReply" class="mui-card reply-card">
-                <h4>Reply</h4>
-                <form @submit.prevent="submitReply">
-                    <textarea
-                        v-model="replyText"
-                        rows="4"
-                        class="mui-textarea"
-                        placeholder="Write your reply..."
-                        required
-                    ></textarea>
-                    <div class="reply-actions">
-                        <input
-                            type="file"
-                            id="reply_attachment"
-                            @change="onFileChange"
-                            class="mui-file-input"
-                        />
-                        <label for="reply_attachment" class="mui-file-label">
-                            <span class="material-icons">attach_file</span>
-                            {{ replyAttachment ? replyAttachment.name : 'Attach files' }}
-                        </label>
-                        <button type="submit" class="mui-btn mui-btn-contained" :disabled="submitting">
-                            Send Reply
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </AuthenticatedLayout>
@@ -123,22 +145,27 @@ const userRole = computed(() => user.value?.role);
 const ticket = computed(() => page.props.ticket);
 const users = computed(() => page.props.users || []);
 
-const canManageTicket = computed(() => {
-    return isAdmin.value || userRole.value === 'Support Staff';
+const isMyTicket = computed(() => {
+    return ticket.value.user_id === user.value?.id;
 });
 
-const canAddNotes = computed(() => {
-    return isAdmin.value || userRole.value === 'Support Staff';
+const canManageTicket = computed(() => {
+    return isAdmin.value || userRole.value === 'Support Staff' || userRole.value === 'Manager';
 });
 
 const canReply = computed(() => {
-    return isAdmin.value || userRole.value === 'Support Staff';
+    return isAdmin.value || userRole.value === 'Support Staff' || userRole.value === 'Manager';
 });
 
-const internalNotes = ref(ticket.value?.internal_notes || '');
+const sortedMessages = computed(() => {
+    const messages = [...(ticket.value.messages || [])];
+    return messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+});
+
 const replyText = ref('');
 const replyAttachment = ref(null);
-const submitting = ref(false);
+const replyStatus = ref('idle'); // idle | sending | sent | error
+const replyError = ref('');
 
 const onFileChange = (e) => {
     replyAttachment.value = e.target.files[0] || null;
@@ -156,7 +183,9 @@ const updateTicket = (field, value) => {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
         },
     }).then(() => {
-        // Optionally reload or show success
+        window.location.reload();
+    }).catch(() => {
+        window.location.reload();
     });
 };
 
@@ -168,7 +197,9 @@ const submitReply = () => {
         form.append('attachment', replyAttachment.value);
     }
 
-    submitting.value = true;
+    replyStatus.value = 'sending';
+    replyError.value = '';
+
     fetch(route('support.update', ticket.value.id), {
         method: 'POST',
         body: form,
@@ -176,10 +207,15 @@ const submitReply = () => {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
         },
     }).then(() => {
+        replyStatus.value = 'sent';
         replyText.value = '';
         replyAttachment.value = null;
-        submitting.value = false;
-        window.location.reload();
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    }).catch(() => {
+        replyStatus.value = 'error';
+        replyError.value = 'Failed to send reply. Please try again.';
     });
 };
 
@@ -218,14 +254,9 @@ const formatDate = (date) => {
 .ticket-id {
     font-family: monospace;
     font-size: 0.9rem;
-    background: rgba(0, 0, 0, 0.05);
+    background: var(--black-tertiary);
     padding: 2px 8px;
     border-radius: 4px;
-}
-
-.ticket-category {
-    font-size: 0.85rem;
-    color: var(--text-secondary, #6b7280);
 }
 
 .ticket-actions {
@@ -237,19 +268,19 @@ const formatDate = (date) => {
 .ticket-section {
     margin-top: 24px;
     padding-top: 24px;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    border-top: 1px solid var(--black-border);
 }
 
 .ticket-section h4 {
     margin: 0 0 12px;
     font-size: 1rem;
-    color: var(--text-primary, #1f2937);
+    color: var(--text-primary);
 }
 
 .ticket-description {
     white-space: pre-wrap;
     line-height: 1.6;
-    color: var(--text-primary, #1f2937);
+    color: var(--text-primary);
 }
 
 .ticket-attachment {
@@ -260,16 +291,7 @@ const formatDate = (date) => {
 }
 
 .ticket-attachment .material-icons {
-    color: var(--text-secondary, #6b7280);
-}
-
-.internal-notes-text {
-    background: #fffbdd;
-    padding: 12px;
-    border-radius: 8px;
-    border-left: 4px solid #fbc02d;
-    white-space: pre-wrap;
-    line-height: 1.6;
+    color: var(--text-secondary);
 }
 
 .ticket-footer {
@@ -278,7 +300,7 @@ const formatDate = (date) => {
     align-items: center;
     margin-top: 24px;
     padding-top: 16px;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    border-top: 1px solid #e5e7eb;
     flex-wrap: wrap;
     gap: 8px;
 }
@@ -288,7 +310,18 @@ const formatDate = (date) => {
     display: flex;
     gap: 16px;
     font-size: 0.85rem;
-    color: var(--text-secondary, #6b7280);
+    color: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+    .ticket-footer {
+        border-top-color: var(--black-border);
+    }
+
+    .ticket-dates,
+    .ticket-people {
+        color: var(--text-secondary);
+    }
 }
 
 .reply-card {
@@ -313,7 +346,7 @@ const formatDate = (date) => {
     gap: 4px;
     cursor: pointer;
     font-size: 0.9rem;
-    color: var(--text-secondary, #6b7280);
+    color: var(--text-secondary);
 }
 
 .status-badge {
@@ -325,23 +358,30 @@ const formatDate = (date) => {
 }
 
 .status-badge.open {
-    background: #e3f2fd;
-    color: #1565c0;
+    background: rgba(0, 200, 83, 0.12);
+    color: var(--green-light);
 }
 
 .status-badge.in_progress {
-    background: #fff3e0;
-    color: #ef6c00;
+    background: rgba(255, 183, 77, 0.12);
+    color: var(--warning);
 }
 
 .status-badge.resolved {
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: rgba(0, 200, 83, 0.14);
+    color: var(--green-lighter);
 }
 
 .status-badge.closed {
-    background: #eceff1;
-    color: #455a64;
+    background: #e5e7eb;
+    color: #4b5563;
+}
+
+@media (prefers-color-scheme: dark) {
+    .status-badge.closed {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-muted);
+    }
 }
 
 .priority-badge {
@@ -353,23 +393,294 @@ const formatDate = (date) => {
 }
 
 .priority-badge.low {
-    background: #e3f2fd;
-    color: #1565c0;
+    background: rgba(0, 200, 83, 0.12);
+    color: var(--green-light);
 }
 
 .priority-badge.medium {
-    background: #fff3e0;
-    color: #ef6c00;
+    background: rgba(255, 183, 77, 0.12);
+    color: var(--warning);
 }
 
 .priority-badge.high {
-    background: #fce4ec;
-    color: #c2185b;
+    background: rgba(207, 102, 121, 0.12);
+    color: var(--danger);
 }
 
 .priority-badge.urgent {
-    background: #ffebee;
-    color: #b71c1c;
+    background: rgba(207, 102, 121, 0.18);
+    color: var(--danger);
+}
+
+.conversation {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.message {
+    display: flex;
+    width: 100%;
+}
+
+.message.customer-message {
+    justify-content: flex-end;
+}
+
+.message.support-message {
+    justify-content: flex-start;
+}
+
+.message-bubble {
+    max-width: 70%;
+    padding: 14px 18px;
+    border-radius: 14px;
+    line-height: 1.6;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.customer-message .message-bubble {
+    background: #2563eb;
+    color: #fff;
+    border-bottom-right-radius: 4px;
+}
+
+.support-message .message-bubble {
+    background: #f3f4f6;
+    color: #111827;
+    border-bottom-left-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .customer-message .message-bubble {
+        background: #3b82f6;
+        color: #fff;
+    }
+
+    .support-message .message-bubble {
+        background: var(--black-tertiary);
+        color: var(--text-primary);
+    }
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.message-author {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.customer-message .message-author {
+    color: #fff;
+}
+
+.support-message .message-author {
+    color: #111827;
+}
+
+@media (prefers-color-scheme: dark) {
+    .support-message .message-author {
+        color: var(--text-primary);
+    }
+}
+
+.message-time {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.message-text {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.message-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.15);
+    font-size: 0.85rem;
+}
+
+.customer-message .message-attachment {
+    border-top-color: rgba(255, 255, 255, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+    .support-message .message-attachment {
+        border-top-color: var(--black-border);
+    }
+}
+
+.message-attachment .material-icons {
+    font-size: 16px;
+}
+
+.ticket-message {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.message-avatar .material-icons {
+    color: #6b7280;
+    font-size: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .message-avatar {
+        background: var(--black-tertiary);
+    }
+
+    .message-avatar .material-icons {
+        color: var(--text-secondary);
+    }
+}
+
+.message-content {
+    flex: 1;
+}
+
+.message-content .message-header {
+    margin-bottom: 8px;
+}
+
+.message-content .ticket-description {
+    white-space: pre-wrap;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.message-content .ticket-attachment {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.message-content .ticket-attachment .material-icons {
+    color: var(--text-secondary);
+}
+
+.reply-section {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 24px;
+    margin-top: 24px;
+}
+
+.reply-section h4 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    color: #111827;
+}
+
+@media (prefers-color-scheme: dark) {
+    .reply-section {
+        border-top-color: var(--black-border);
+    }
+
+    .reply-section h4 {
+        color: var(--text-primary);
+    }
+}
+
+.reply-status {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.reply-status-success {
+    background: rgba(0, 200, 83, 0.12);
+    color: #166534;
+    border-left: 4px solid #16a34a;
+}
+
+.reply-status-error {
+    background: rgba(207, 102, 121, 0.12);
+    color: #991b1b;
+    border-left: 4px solid #e11d48;
+}
+
+@media (prefers-color-scheme: dark) {
+    .reply-status-success {
+        color: var(--green-light);
+        border-left-color: var(--green-light);
+    }
+
+    .reply-status-error {
+        color: var(--danger);
+        border-left-color: var(--danger);
+    }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.reply-email-notice {
+    background: #f3f4f6;
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid #2563eb;
+}
+
+.reply-email-notice h4 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+    color: #111827;
+}
+
+.reply-email-notice p {
+    margin: 0;
+    color: #374151;
+    line-height: 1.6;
+}
+
+@media (prefers-color-scheme: dark) {
+    .reply-email-notice {
+        background: var(--black-tertiary);
+        border-left-color: var(--primary);
+    }
+
+    .reply-email-notice h4 {
+        color: var(--text-primary);
+    }
+
+    .reply-email-notice p {
+        color: var(--text-secondary);
+    }
 }
 
 @media (max-width: 768px) {
@@ -380,6 +691,14 @@ const formatDate = (date) => {
     .ticket-footer {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .ticket-message {
+        flex-direction: column;
+    }
+
+    .message-avatar {
+        display: none;
     }
 }
 </style>

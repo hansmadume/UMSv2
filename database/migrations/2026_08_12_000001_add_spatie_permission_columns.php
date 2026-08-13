@@ -10,18 +10,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('roles', function (Blueprint $table) {
-            if (!Schema::hasColumn('roles', 'guard_name')) {
+            if (! Schema::hasColumn('roles', 'guard_name')) {
                 $table->string('guard_name')->default('web')->after('status');
             }
         });
 
         Schema::table('permissions', function (Blueprint $table) {
-            if (!Schema::hasColumn('permissions', 'guard_name')) {
+            if (! Schema::hasColumn('permissions', 'guard_name')) {
                 $table->string('guard_name')->default('web')->after('description');
             }
         });
 
-        if (!Schema::hasTable('model_has_roles')) {
+        if (! Schema::hasTable('model_has_roles')) {
             Schema::create('model_has_roles', function (Blueprint $table) {
                 $table->unsignedInteger('role_id');
                 $table->string('model_type');
@@ -36,7 +36,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('model_has_permissions')) {
+        if (! Schema::hasTable('model_has_permissions')) {
             Schema::create('model_has_permissions', function (Blueprint $table) {
                 $table->unsignedInteger('permission_id');
                 $table->string('model_type');
@@ -51,7 +51,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('role_has_permissions')) {
+        if (! Schema::hasTable('role_has_permissions')) {
             Schema::create('role_has_permissions', function (Blueprint $table) {
                 $table->unsignedInteger('permission_id');
                 $table->unsignedInteger('role_id');
@@ -74,7 +74,7 @@ return new class extends Migration
             $rows = DB::table('role_permissions')->select('permission_id', 'role_id')->get()->map(function ($row) {
                 return ['permission_id' => $row->permission_id, 'role_id' => $row->role_id];
             })->toArray();
-            if (!empty($rows)) {
+            if (! empty($rows)) {
                 DB::table('role_has_permissions')->insert($rows);
             }
         }

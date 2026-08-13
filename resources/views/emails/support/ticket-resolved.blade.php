@@ -1,21 +1,23 @@
 <x-mail::message>
-# Support Ticket #{{ $ticket->ticket_id }} - Resolved
+# Support Ticket #{{ $ticket->ticket_number }} Resolved
+
+Hi {{ $userName ?? 'there' }},
 
 Your support ticket has been marked as resolved.
 
-**Ticket ID:** #{{ $ticket->ticket_id }}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**Ticket #{{ $ticket->ticket_number }}**
 **Subject:** {{ $ticket->subject }}
 **Status:** Resolved
 **Priority:** {{ ucfirst($ticket->priority) }}
 
-## Description
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{{ $ticket->comments }}
+If you're still having trouble, simply reply to this email
+and our Support Team will assist you further.
 
-<x-mail::button :url="url('/support/tickets/' . $ticket->id)">
-    View Ticket
-</x-mail::button>
-
-Thanks,<br>
-{{ config('app.name') }}
+Thank you,<br>
+Support Team<br>
+User Management System
 </x-mail::message>

@@ -4,9 +4,8 @@ namespace App\Mail;
 
 use App\Models\SupportTicket;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Attachment;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -23,7 +22,8 @@ class SupportTicketClosed extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Support Ticket #' . $this->ticket->ticket_id . ' - Closed',
+            subject: 'Support Ticket #'.$this->ticket->ticket_number.' Closed',
+            replyTo: [new Address(config('mail.from.address'), config('mail.from.name'))],
         );
     }
 

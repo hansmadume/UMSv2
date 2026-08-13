@@ -7,6 +7,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\PermissionRegistrar;
 
 class RoleController extends Controller
 {
@@ -42,6 +43,7 @@ class RoleController extends Controller
     public function create()
     {
         $permissions = Permission::orderBy('name')->get();
+
         return inertia('Roles/Create', ['permissions' => $permissions]);
     }
 
@@ -66,9 +68,11 @@ class RoleController extends Controller
             'status' => $validated['status'],
         ]);
 
-        if (!empty($validated['permissions'])) {
+        if (! empty($validated['permissions'])) {
             $role->permissions()->sync($validated['permissions']);
         }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         AuditLog::create([
             'user_id' => $request->user()?->id,
@@ -87,6 +91,7 @@ class RoleController extends Controller
     public function show(Role $role)
     {
         $role->load('permissions', 'users');
+
         return inertia('Roles/Show', ['role' => $role]);
     }
 
@@ -128,6 +133,8 @@ class RoleController extends Controller
         ]);
 
         $role->permissions()->sync($validated['permissions'] ?? []);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         AuditLog::create([
             'user_id' => $request->user()?->id,

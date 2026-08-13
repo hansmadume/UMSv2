@@ -12,11 +12,18 @@ const userRole = computed(() => user.value?.role);
 const canManageUsers = computed(() => isAdmin.value || isManager.value);
 const canViewSupportDashboard = computed(() => {
     const perms = user.value?.permissions || [];
-    return isAdmin.value || userRole.value === 'Support Staff' || perms.includes('tickets.view');
+    return isAdmin.value || userRole.value === 'Support Staff' || userRole.value === 'Manager';
 });
 const canViewOwnTickets = computed(() => {
     const perms = user.value?.permissions || [];
-    return perms.includes('tickets.view');
+    return perms.includes('tickets.view_own');
+});
+const isMyTicketView = computed(() => {
+    return route().current('support.index') && !isAdmin.value && userRole.value !== 'Support Staff' && userRole.value !== 'Manager';
+});
+const canContactSupport = computed(() => {
+    const perms = user.value?.permissions || [];
+    return isAdmin.value || perms.includes('support.contact');
 });
 const backendNotifications = computed(() => page.props.notifications || []);
 const flash = computed(() => page.props.flash || {});
@@ -294,7 +301,7 @@ onUnmounted(() => {
                     <span class="material-icons">support_agent</span>
                     <span class="nav-text">Support Dashboard</span>
                 </Link>
-                <Link v-if="canViewOwnTickets" :href="userRole === 'Support Staff' ? route('support.my-tickets') : route('support.index')" class="nav-item" :class="{ active: route().current('support.index') || route().current('support.my-tickets') }">
+                <Link v-if="canViewOwnTickets" :href="userRole === 'Support Staff' || userRole === 'Manager' ? route('support.index') : route('support.my-tickets')" class="nav-item" :class="{ active: route().current('support.index') || route().current('support.my-tickets') }">
                     <span class="material-icons">confirmation_number</span>
                     <span class="nav-text">My Tickets</span>
                 </Link>
@@ -314,7 +321,7 @@ onUnmounted(() => {
                     <span class="material-icons">person</span>
                     <span class="nav-text">Profile</span>
                 </Link>
-                <button type="button" class="nav-item" @click="contactSupportOpen = true">
+                <button v-if="canContactSupport" type="button" class="nav-item" @click="contactSupportOpen = true">
                     <span class="material-icons">support_agent</span>
                     <span class="nav-text">Contact Support</span>
                 </button>

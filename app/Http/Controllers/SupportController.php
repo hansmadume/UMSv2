@@ -9,10 +9,11 @@ use App\Mail\SupportTicketResolved;
 use App\Mail\SupportTicketUpdated;
 use App\Models\AuditLog;
 use App\Models\SupportTicket;
+use App\Models\TicketMessage;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class SupportController extends Controller
@@ -23,7 +24,7 @@ class SupportController extends Controller
 
         $tickets = SupportTicket::query()
             ->with(['user', 'assignedTo'])
-            ->where('assigned_to', $user->id)
+            ->where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -40,12 +41,14 @@ class SupportController extends Controller
         $query = SupportTicket::query()->with(['user', 'assignedTo']);
 
         if ($user->hasRole('Administrator')) {
-            // Admin sees all tickets
-        } elseif ($user->hasAnyRole(['Support Staff'])) {
             if ($request->boolean('my_tickets')) {
                 $query->where('assigned_to', $user->id);
             }
-        } elseif ($user->can('tickets.view')) {
+        } elseif ($user->hasAnyRole(['Support Staff', 'Manager'])) {
+            if ($request->boolean('my_tickets')) {
+                $query->where('assigned_to', $user->id);
+            }
+        } elseif ($user->can('tickets.view_own')) {
             $query->where('user_id', $user->id);
         } else {
             $query->where('id', 0); // No tickets
@@ -61,18 +64,19 @@ class SupportController extends Controller
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('ticket_id', 'like', "%{$search}%")
-                    ->orWhere('subject', 'like', "%{$search}%")
-                    ->orWhere('username', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                $q->where('ticket_number', 'like', "%{$search}%")
+                    ->orWhere('subject', 'like', "%{$search}%");
             });
         }
 
         $tickets = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
+        $isMyTickets = $user->can('tickets.view_own') && ! $user->hasAnyRole(['Administrator', 'Support Staff', 'Manager']);
+
         return inertia('Support/Index', [
             'tickets' => $tickets,
             'filters' => $request->only(['search', 'status', 'priority', 'my_tickets']),
+            'isMyTickets' => $isMyTickets,
         ]);
     }
 
@@ -85,7 +89,6 @@ class SupportController extends Controller
     {
         $validated = $request->validate([
             'subject' => ['required', 'string', 'max:150'],
-            'category' => ['required', 'string', 'max:100'],
             'priority' => ['required', 'in:low,medium,high,urgent'],
             'comments' => ['required', 'string', 'max:2000'],
             'attachment' => ['nullable', 'file', 'max:5120'],
@@ -99,13 +102,10 @@ class SupportController extends Controller
         }
 
         $ticket = SupportTicket::create([
-            'ticket_id' => 'TKT-' . str_pad(SupportTicket::max('id') + 1, 6, '0', STR_PAD_LEFT),
+            'ticket_number' => 'TKT-'.str_pad(SupportTicket::max('id') + 1, 6, '0', STR_PAD_LEFT),
             'subject' => $validated['subject'],
-            'category' => $validated['category'],
             'priority' => $validated['priority'],
             'user_id' => $user->id,
-            'username' => $user->username ?? $user->full_name ?? $user->email,
-            'email' => $user->email,
             'comments' => $validated['comments'],
             'attachment_path' => $attachmentPath,
             'status' => 'open',
@@ -114,12 +114,14 @@ class SupportController extends Controller
         AuditLog::create([
             'user_id' => $user->id,
             'user_name' => $user->getDisplayName(),
-            'action' => 'Support Ticket Created: ' . $ticket->ticket_id,
+            'action' => 'Support Ticket Created: '.$ticket->ticket_id,
             'ip_address' => $request->ip(),
             'created_at' => now(),
         ]);
 
         try {
+            Mail::to($ticket->user->email)->send(new SupportTicketCreated($ticket, $user->getDisplayName()));
+
             $supportEmails = User::whereHas('roles', function ($q) {
                 $q->whereIn('name', ['Administrator', 'Support Staff']);
             })->pluck('email')->filter()->toArray();
@@ -128,7 +130,11 @@ class SupportController extends Controller
                 Mail::to($email)->send(new SupportTicketCreated($ticket, $user->getDisplayName()));
             }
         } catch (\Throwable $e) {
-            // Log but don't fail the request
+            Log::error('Support ticket created email failed', [
+                'ticket_id' => $ticket->ticket_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
 
         return redirect()->route('support.index')->with('success', 'Support ticket created successfully.');
@@ -142,18 +148,19 @@ class SupportController extends Controller
             abort(403, 'You do not have permission to access this ticket.');
         }
 
-        $ticket->load('user', 'assignedTo');
+        $ticket->load('user', 'assignedTo', 'messages.user');
 
         $assignableUsers = [];
-        if ($user->hasRole('Administrator') || $user->hasRole('Support Staff')) {
+        if ($user->hasRole('Administrator') || $user->hasRole('Support Staff') || $user->hasRole('Manager')) {
             $assignableUsers = User::whereHas('roles', function ($q) {
-                $q->whereIn('name', ['Administrator', 'Support Staff']);
+                $q->whereIn('name', ['Administrator', 'Support Staff', 'Manager']);
             })->get(['id', 'name', 'username']);
         }
 
         return inertia('Support/Show', [
             'ticket' => $ticket,
             'users' => $assignableUsers,
+            'isMyTicket' => $ticket->user_id === $user->id,
         ]);
     }
 
@@ -162,30 +169,64 @@ class SupportController extends Controller
         $user = $request->user();
 
         if (! $this->canAccessTicket($user, $ticket)) {
-            abort(403, 'You do not have permission to update this ticket.');
+            abort(403, 'You do not have permission to access this ticket.');
         }
 
         $validated = $request->validate([
             'status' => ['nullable', 'in:open,in_progress,resolved,closed'],
             'priority' => ['nullable', 'in:low,medium,high,urgent'],
             'assigned_to' => ['nullable', 'exists:users,id'],
-            'internal_notes' => ['nullable', 'string', 'max:2000'],
             'comments' => ['nullable', 'string', 'max:2000'],
-            'attachment' => ['nullable', 'file', 'max:5120'],
         ]);
 
+        $replyAttachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $validated['attachment_path'] = $request->file('attachment')->store('support-tickets', 'public');
+            $replyAttachmentPath = $request->file('attachment')->store('support-tickets', 'public');
         }
 
-        $oldStatus = $ticket->status;
+        if (isset($validated['status']) && ! $user->can('tickets.change_status')) {
+            abort(403, 'You do not have permission to change ticket status.');
+        }
+
+        if (isset($validated['priority']) && ! $user->can('tickets.change_priority')) {
+            abort(403, 'You do not have permission to change ticket priority.');
+        }
+
+        if (isset($validated['assigned_to']) && ! $user->can('tickets.assign')) {
+            abort(403, 'You do not have permission to assign tickets.');
+        }
+
+        if (isset($validated['comments'])) {
+            $canReply = $user->can('tickets.reply') || ($ticket->user_id === $user->id && $user->can('tickets.reply_own'));
+            if (! $canReply) {
+                abort(403, 'You do not have permission to reply to this ticket.');
+            }
+
+            $replyAttachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $replyAttachmentPath = $request->file('attachment')->store('support-tickets', 'public');
+            }
+
+            TicketMessage::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'message' => $validated['comments'],
+                'attachment_path' => $replyAttachmentPath,
+            ]);
+        }
+
         $updateMessage = match (true) {
             isset($validated['comments']) => 'New reply added',
-            isset($validated['status']) => 'Status changed to ' . $validated['status'],
-            isset($validated['priority']) => 'Priority changed to ' . $validated['priority'],
+            isset($validated['status']) => 'Status changed to '.$validated['status'],
+            isset($validated['priority']) => 'Priority changed to '.$validated['priority'],
             isset($validated['assigned_to']) => 'Ticket assignment updated',
-            isset($validated['internal_notes']) => 'Internal notes updated',
             default => 'Ticket updated',
+        };
+
+        $shouldNotifyCustomer = match (true) {
+            isset($validated['comments']) => true,
+            isset($validated['status']) && in_array($validated['status'], ['resolved', 'closed']) => true,
+            default => false,
         };
 
         $ticket->update($validated);
@@ -193,23 +234,31 @@ class SupportController extends Controller
         AuditLog::create([
             'user_id' => $request->user()?->id,
             'user_name' => $request->user()?->getDisplayName(),
-            'action' => 'Support Ticket Updated: ' . $ticket->ticket_id,
+            'action' => 'Support Ticket Updated: '.$ticket->ticket_id,
             'ip_address' => $request->ip(),
             'created_at' => now(),
         ]);
 
         try {
+            if (! $shouldNotifyCustomer) {
+                return back()->with('success', 'Ticket updated successfully.');
+            }
+
             if (isset($validated['comments'])) {
-                Mail::to($ticket->email)->send(new SupportTicketNewReply($ticket, $request->user()?->getDisplayName(), $validated['comments']));
+                Mail::to($ticket->user->email)->send(new SupportTicketNewReply($ticket, $request->user()?->getDisplayName(), $validated['comments']));
             } elseif (isset($validated['status']) && $validated['status'] === 'resolved') {
-                Mail::to($ticket->email)->send(new SupportTicketResolved($ticket, $request->user()?->getDisplayName()));
+                Mail::to($ticket->user->email)->send(new SupportTicketResolved($ticket, $request->user()?->getDisplayName()));
             } elseif (isset($validated['status']) && $validated['status'] === 'closed') {
-                Mail::to($ticket->email)->send(new SupportTicketClosed($ticket, $request->user()?->getDisplayName()));
+                Mail::to($ticket->user->email)->send(new SupportTicketClosed($ticket, $request->user()?->getDisplayName()));
             } else {
-                Mail::to($ticket->email)->send(new SupportTicketUpdated($ticket, $request->user()?->getDisplayName(), $updateMessage));
+                Mail::to($ticket->user->email)->send(new SupportTicketUpdated($ticket, $request->user()?->getDisplayName(), $updateMessage));
             }
         } catch (\Throwable $e) {
-            // Log but don't fail the request
+            Log::error('Support ticket update email failed', [
+                'ticket_id' => $ticket->ticket_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
 
         return back()->with('success', 'Ticket updated successfully.');
@@ -221,16 +270,12 @@ class SupportController extends Controller
             return true;
         }
 
-        if ($user->hasAnyRole(['Support Staff'])) {
+        if ($user->hasAnyRole(['Support Staff', 'Manager'])) {
             return true;
         }
 
-        if ($user->hasAnyPermission(['tickets.view', 'tickets.update', 'tickets.reply'])) {
-            return true;
-        }
-
-        if ($ticket->user_id === $user->id) {
-            return true;
+        if ($user->hasAnyPermission(['tickets.view_own', 'tickets.reply_own', 'tickets.close_own'])) {
+            return $ticket->user_id === $user->id;
         }
 
         return false;
@@ -249,7 +294,7 @@ class SupportController extends Controller
         $resolvedToday = SupportTicket::where('status', 'resolved')
             ->whereDate('updated_at', now()->toDateString())
             ->count();
-        $recentlyUpdated = SupportTicket::orderBy('updated_at', 'desc')->limit(10)->get();
+        $recentlyUpdated = SupportTicket::with('user')->orderBy('updated_at', 'desc')->limit(10)->get();
 
         return inertia('Support/Dashboard', [
             'stats' => [
@@ -285,13 +330,10 @@ class SupportController extends Controller
         }
 
         $ticket = SupportTicket::create([
-            'ticket_id' => 'TKT-' . str_pad(SupportTicket::max('id') + 1, 6, '0', STR_PAD_LEFT),
+            'ticket_number' => 'TKT-'.str_pad(SupportTicket::max('id') + 1, 6, '0', STR_PAD_LEFT),
             'subject' => 'Support Request',
-            'category' => 'General',
             'priority' => 'medium',
             'user_id' => $user->id,
-            'username' => $user->username ?? $user->full_name ?? $user->email,
-            'email' => $user->email,
             'comments' => $validated['comments'],
             'attachment_path' => $attachmentPath,
             'status' => 'open',
@@ -300,12 +342,14 @@ class SupportController extends Controller
         AuditLog::create([
             'user_id' => $user->id,
             'user_name' => $user->getDisplayName(),
-            'action' => 'Support Ticket Created: ' . $ticket->ticket_id,
+            'action' => 'Support Ticket Created: '.$ticket->ticket_id,
             'ip_address' => $request->ip(),
             'created_at' => now(),
         ]);
 
         try {
+            Mail::to($ticket->user->email)->send(new SupportTicketCreated($ticket, $user->getDisplayName()));
+
             $supportEmails = User::whereHas('roles', function ($q) {
                 $q->whereIn('name', ['Administrator', 'Support Staff']);
             })->pluck('email')->filter()->toArray();
@@ -314,7 +358,11 @@ class SupportController extends Controller
                 Mail::to($email)->send(new SupportTicketCreated($ticket, $user->getDisplayName()));
             }
         } catch (\Throwable $e) {
-            // Log but don't fail the request
+            Log::error('Support contact email failed', [
+                'ticket_id' => $ticket->ticket_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
 
         return back()->with('success', 'Support ticket submitted successfully.');

@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('permissions', function (Blueprint $table) {
-            if (!Schema::hasColumn('permissions', 'updated_at')) {
+            if (! Schema::hasColumn('permissions', 'updated_at')) {
                 $table->timestamp('updated_at')->nullable()->after('created_at');
             }
         });

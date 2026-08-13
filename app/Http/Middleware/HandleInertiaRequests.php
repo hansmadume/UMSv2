@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -22,7 +23,7 @@ class HandleInertiaRequests extends Middleware
         $notifications = [];
 
         if ($user) {
-            $notifications = \App\Models\AuditLog::query()
+            $notifications = AuditLog::query()
                 ->when($user->hasRole('Administrator'), function (Builder $query) {
                     $query->latest('created_at')->limit(8);
                 }, function (Builder $query) use ($user) {
@@ -31,9 +32,9 @@ class HandleInertiaRequests extends Middleware
                 ->get(['id', 'user_name', 'action', 'created_at'])
                 ->map(function ($log) {
                     return [
-                        'id' => 'audit-' . $log->id,
+                        'id' => 'audit-'.$log->id,
                         'title' => $log->action,
-                        'message' => ($log->user_name ?: 'System') . ' - ' . ($log->action ?: 'Activity'),
+                        'message' => ($log->user_name ?: 'System').' - '.($log->action ?: 'Activity'),
                         'time' => $log->created_at?->toIso8601String(),
                         'icon' => 'info',
                         'read' => false,

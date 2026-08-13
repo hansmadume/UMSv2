@@ -1,15 +1,15 @@
 <template>
-    <Head title="Support Tickets" />
+    <Head :title="isMyTickets ? 'My Support Requests' : 'Support Tickets'" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="section-header">
-                <h2>Support Tickets</h2>
+                <h2>{{ isMyTickets ? 'My Support Requests' : 'Support Tickets' }}</h2>
             </div>
         </template>
 
         <div class="support-tickets">
-            <div class="filters-bar">
+            <div v-if="!isMyTickets" class="filters-bar">
                 <TextInput
                     v-model="search"
                     placeholder="Search tickets..."
@@ -30,7 +30,7 @@
                     <option value="high">High</option>
                     <option value="urgent">Urgent</option>
                 </select>
-                <button v-if="isSupportStaff" type="button" class="mui-btn mui-btn-outlined" @click="toggleMyTickets">
+                <button type="button" class="mui-btn mui-btn-outlined" @click="toggleMyTickets">
                     {{ filters.my_tickets ? 'All Tickets' : 'My Tickets' }}
                 </button>
             </div>
@@ -42,10 +42,9 @@
                             <tr>
                                 <th>Ticket ID</th>
                                 <th>Subject</th>
-                                <th>Category</th>
                                 <th>Status</th>
-                                <th>Priority</th>
-                                <th>Assigned To</th>
+                                <th v-if="!isMyTickets">Priority</th>
+                                <th v-if="!isMyTickets">Assigned To</th>
                                 <th>Created At</th>
                                 <th style="text-align: right">Actions</th>
                             </tr>
@@ -54,14 +53,13 @@
                             <tr v-for="ticket in tickets.data" :key="ticket.id">
                                 <td><strong>{{ ticket.ticket_id }}</strong></td>
                                 <td>{{ ticket.subject }}</td>
-                                <td>{{ ticket.category }}</td>
                                 <td>
                                     <span :class="['status-badge', ticket.status]">{{ ticket.status }}</span>
                                 </td>
-                                <td>
+                                <td v-if="!isMyTickets">
                                     <span class="priority-badge" :class="ticket.priority">{{ ticket.priority }}</span>
                                 </td>
-                                <td>{{ ticket.assigned_to ? ticket.assignedTo?.name || 'Assigned' : '—' }}</td>
+                                <td v-if="!isMyTickets">{{ ticket.assigned_to ? (ticket.assignedTo?.name || ticket.assignedTo?.full_name || ticket.assignedTo?.username || 'Assigned') : '—' }}</td>
                                 <td>{{ formatDate(ticket.created_at) }}</td>
                                 <td class="table-actions" style="text-align: right">
                                     <Link :href="route('support.show', ticket.id)" class="mui-btn mui-btn-outlined mui-btn-sm">
@@ -70,13 +68,13 @@
                                 </td>
                             </tr>
                             <tr v-if="!tickets.data.length">
-                                <td colspan="8" class="empty-state">No tickets found.</td>
+                                <td :colspan="isMyTickets ? 5 : 7" class="empty-state">No tickets found.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="pagination">
+                <div v-if="!isMyTickets" class="pagination">
                     <Link v-if="tickets.prev_page_url" :href="tickets.prev_page_url" class="mui-btn mui-btn-outlined mui-btn-sm">
                         Previous
                     </Link>
@@ -99,10 +97,10 @@ import TextInput from '@/Components/TextInput.vue';
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const isAdmin = computed(() => user.value?.is_admin);
-const isSupportStaff = computed(() => user.value?.role === 'Support Staff');
 
 const tickets = computed(() => page.props.tickets || { data: [] });
 const filters = computed(() => page.props.filters || {});
+const isMyTickets = computed(() => page.props.isMyTickets || false);
 
 const search = ref(filters.value.search || '');
 const statusFilter = ref(filters.value.status || '');

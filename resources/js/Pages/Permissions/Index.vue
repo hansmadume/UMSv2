@@ -73,9 +73,9 @@ const deletePermission = (p) => {
                         </thead>
                         <tbody>
                             <tr v-for="p in permissions.data" :key="p.id">
+                                <td><strong>{{ p.description || p.name }}</strong></td>
+                                <td><code class="permission-slug">{{ p.slug }}</code></td>
                                 <td>{{ p.name }}</td>
-                                <td>{{ p.slug }}</td>
-                                <td>{{ p.description || "—" }}</td>
                                 <td class="table-actions" style="text-align: right">
                                     <Link
                                         :href="route('permissions.edit', p.id)"

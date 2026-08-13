@@ -1,27 +1,31 @@
 <x-mail::message>
-# Support Ticket Updated
+# Support Ticket #{{ $ticket->ticket_number }} Updated
+
+Hi {{ $userName ?? 'there' }},
 
 Your support ticket has been updated.
 
-**Ticket ID:** #{{ $ticket->ticket_id }}  
-**Subject:** {{ $ticket->subject }}  
-**Status:** {{ ucfirst($ticket->status) }}  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**Ticket #{{ $ticket->ticket_number }}**
+**Subject:** {{ $ticket->subject }}
+**Status:** {{ ucfirst($ticket->status) }}
 **Priority:** {{ ucfirst($ticket->priority) }}
 
-@if($updateMessage)
-## Update
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-{{ $updateMessage }}
+@if($updateMessage)
+**Update:** {{ $updateMessage }}
 @endif
 
-## Description
-
-{{ $ticket->comments }}
+If you're still having trouble, simply reply to this email
+and our Support Team will assist you further.
 
 <x-mail::button :url="url('/support/tickets/' . $ticket->id)">
-    View Ticket
+    View Support Ticket
 </x-mail::button>
 
-Thanks,<br>
+Thank you,<br>
+Support Team<br>
 {{ config('app.name') }}
 </x-mail::message>

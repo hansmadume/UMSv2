@@ -1,29 +1,28 @@
 <x-mail::message>
-# Support Ticket #{{ $ticket->ticket_id }} - New Reply
+# Re: Support Ticket #{{ $ticket->ticket_number }} — {{ $ticket->subject }}
 
-A new reply has been added to your support ticket.
+Hi {{ $userName ?? 'there' }},
 
-**Ticket ID:** #{{ $ticket->ticket_id }}
+Our Support Team has replied to your support ticket.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**Ticket #{{ $ticket->ticket_number }}**
 **Subject:** {{ $ticket->subject }}
 **Status:** {{ ucfirst($ticket->status) }}
-**Priority:** {{ ucfirst($ticket->priority) }}
-**Replied By:** {{ $replierName ?? 'Support Staff' }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @if($replyMessage)
-## Reply
+**Support Staff:**
 
 {{ $replyMessage }}
 @endif
 
-## Latest Description
+If you're still having trouble, simply reply to this email
+and our Support Team will assist you further.
 
-{{ $ticket->comments }}
-
-<x-mail::button :url="url('/support/tickets/' . $ticket->id)">
-    View Ticket
-</x-mail::button>
-
-Thanks,<br>
-{{ config('app.name') }}
+Thank you,<br>
+Support Team<br>
+User Management System
 </x-mail::message>
-

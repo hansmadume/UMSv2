@@ -1,24 +1,21 @@
 <x-mail::message>
-# New Support Ticket #{{ $ticket->ticket_id }}
+# Support Ticket #{{ $ticket->ticket_number }} Received
 
-A new support ticket has been created and requires attention.
+Hi {{ $userName ?? 'there' }},
 
-**Ticket ID:** #{{ $ticket->ticket_id }}
-**Subject:** {{ $ticket->subject }}
-**Category:** {{ $ticket->category }}
-**Priority:** {{ ucfirst($ticket->priority) }}
-**Status:** {{ ucfirst($ticket->status) }}
-**Created By:** {{ $userName ?? $ticket->username ?? 'Anonymous' }}
-**Email:** {{ $ticket->email }}
+We've received your support request.
 
-## Description
+Ticket #{{ $ticket->ticket_number }}
+Subject: {{ $ticket->subject }}
+Priority: {{ ucfirst($ticket->priority) }}
+Status: {{ ucfirst($ticket->status) }}
 
-{{ $ticket->comments }}
+Our Support Team will review your request and get back to you.
 
-<x-mail::button :url="url('/support/tickets/' . $ticket->id)">
-    View Ticket
-</x-mail::button>
+You can reply directly to this email if you have additional
+information about your issue.
 
-Thanks,<br>
-{{ config('app.name') }}
+Thank you,<br>
+Support Team<br>
+User Management System
 </x-mail::message>

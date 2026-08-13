@@ -65,7 +65,7 @@
                     <div v-for="ticket in recentlyUpdated" :key="ticket.id" class="activity-item">
                         <div class="activity-info">
                             <div class="activity-text">
-                                <strong>#{{ ticket.id }}</strong> — {{ ticket.username || 'Anonymous' }}
+                                <strong>#{{ ticket.ticket_number }}</strong> — {{ ticket.username || 'Anonymous' }}
                             </div>
                             <div class="activity-time">{{ ticket.email }}</div>
                         </div>

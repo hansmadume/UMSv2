@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionController extends Controller
 {
@@ -63,12 +64,16 @@ class PermissionController extends Controller
 
         $permission->update($validated);
 
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         return redirect()->route('permissions.index')->with('success', 'Permission updated successfully.');
     }
 
     public function destroy(Request $request, Permission $permission)
     {
         $permission->delete();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         return redirect()->route('permissions.index')->with('success', 'Permission deleted successfully.');
     }

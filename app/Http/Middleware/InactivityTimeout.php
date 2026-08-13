@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AuditLog;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +28,7 @@ class InactivityTimeout
 
         if ($last && ($now - (int) $last) > $timeout) {
             $user = Auth::user();
-            \App\Models\AuditLog::create([
+            AuditLog::create([
                 'user_id' => $user?->id,
                 'user_name' => $user?->getDisplayName(),
                 'action' => 'Session Expired (Inactivity)',

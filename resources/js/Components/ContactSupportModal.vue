@@ -59,6 +59,9 @@ const sendSupport = () => {
             form.reset();
             sent.value = true;
         },
+        onError: () => {
+            // validation errors will be displayed by InputError components
+        },
     });
 };
 </script>
@@ -114,10 +117,11 @@ const sendSupport = () => {
                         </div>
 
                         <div class="confirm-card-actions">
-                            <button type="button" class="mui-btn mui-btn-outlined" @click="cancelSupport">Cancel</button>
+                            <button type="button" class="mui-btn mui-btn-outlined" @click="cancelSupport" :disabled="form.processing">Cancel</button>
                             <button type="submit" class="mui-btn mui-btn-contained" :disabled="form.processing">
-                                <span class="material-icons">send</span>
-                                Send
+                                <span v-if="form.processing" class="material-icons spin">refresh</span>
+                                <span v-else class="material-icons">send</span>
+                                {{ form.processing ? 'Sending...' : 'Send' }}
                             </button>
                         </div>
                     </form>
@@ -182,6 +186,19 @@ const sendSupport = () => {
     color: var(--text-secondary);
     margin: 0 0 20px;
     line-height: 1.6;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @media (max-width: 768px) {

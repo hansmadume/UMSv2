@@ -23,12 +23,15 @@ Route::middleware(['auth', 'inactivity'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Support
-    Route::middleware(['role:Administrator,Support Staff'])->group(function () {
+    Route::middleware(['permission:tickets.view'])->group(function () {
         Route::get('/support', [SupportController::class, 'dashboard'])->name('support.dashboard');
         Route::get('/support/tickets', [SupportController::class, 'index'])->name('support.index');
-        Route::get('/support/my-tickets', [SupportController::class, 'myTickets'])->name('support.my-tickets');
         Route::get('/support/tickets/create', [SupportController::class, 'create'])->name('support.create');
         Route::post('/support/tickets', [SupportController::class, 'store'])->name('support.store');
+    });
+
+    Route::middleware(['permission:tickets.view_own'])->group(function () {
+        Route::get('/support/my-tickets', [SupportController::class, 'myTickets'])->name('support.my-tickets');
     });
 
     Route::middleware(['auth', 'inactivity'])->group(function () {
@@ -36,22 +39,28 @@ Route::middleware(['auth', 'inactivity'])->group(function () {
         Route::put('/support/tickets/{ticket}', [SupportController::class, 'update'])->name('support.update');
     });
 
-    Route::post('/contact-support', [SupportController::class, 'storeContact'])->name('support.contact.store');
+    Route::middleware(['permission:support.contact'])->group(function () {
+        Route::post('/contact-support', [SupportController::class, 'storeContact'])->name('support.contact.store');
+    });
 
-    // User Management - administrator and manager
-    Route::middleware(['role:Administrator,Manager'])->group(function () {
+    // User Management
+    Route::middleware(['permission:users.view'])->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
         Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
     });
 
-    // Roles Management - administrator only
-    Route::middleware(['role:Administrator'])->group(function () {
+    // Roles Management
+    Route::middleware(['permission:roles.view'])->group(function () {
         Route::resource('roles', RoleController::class);
+    });
+
+    // Permissions Management
+    Route::middleware(['permission:permissions.view'])->group(function () {
         Route::resource('permissions', PermissionController::class);
     });
 
-    // Audit Logs - administrator only
-    Route::middleware(['role:Administrator'])->group(function () {
+    // Audit Logs
+    Route::middleware(['permission:audit_logs.view'])->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     });
 });

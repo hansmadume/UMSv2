@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('users')) {
+        if (! Schema::hasTable('users')) {
             Schema::create('users', function (Blueprint $table) {
                 $table->id();
                 $table->string('name')->nullable()->after('id');
@@ -29,7 +29,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('roles')) {
+        if (! Schema::hasTable('roles')) {
             Schema::create('roles', function (Blueprint $table) {
                 $table->id();
                 $table->string('name')->unique();
@@ -40,7 +40,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('permissions')) {
+        if (! Schema::hasTable('permissions')) {
             Schema::create('permissions', function (Blueprint $table) {
                 $table->id();
                 $table->string('name');
@@ -50,7 +50,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('role_permissions')) {
+        if (! Schema::hasTable('role_permissions')) {
             Schema::create('role_permissions', function (Blueprint $table) {
                 $table->foreignId('role_id')->constrained()->cascadeOnDelete();
                 $table->foreignId('permission_id')->constrained()->cascadeOnDelete();
@@ -58,7 +58,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('audit_logs')) {
+        if (! Schema::hasTable('audit_logs')) {
             Schema::create('audit_logs', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->nullable()->index();
