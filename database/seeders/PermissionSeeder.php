@@ -18,6 +18,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'View Roles', 'slug' => 'view_roles', 'description' => 'View roles list'],
             ['name' => 'Manage Roles', 'slug' => 'manage_roles', 'description' => 'Create, edit, and delete roles'],
             ['name' => 'Manage Settings', 'slug' => 'manage_settings', 'description' => 'Manage system settings'],
+            ['name' => 'Support Management', 'slug' => 'support_management', 'description' => 'Manage support tickets and contact support'],
         ];
 
         foreach ($permissions as $permission) {
