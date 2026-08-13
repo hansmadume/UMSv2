@@ -28,8 +28,8 @@
   caret-color: var(--text-primary);
 }
 
-.login-card .mui-input:-webkit-autofill + .mui-label,
-.login-card .mui-input:-webkit-autofill:hover + .mui-label {
+.login-card .mui-input-group:has(.mui-input:-webkit-autofill) .mui-label,
+.login-card .mui-input-group:has(.mui-input:-webkit-autofill:hover) .mui-label {
   transform: translateY(-26px);
   font-size: 0.75rem;
   color: var(--green-light);
