@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import ContactSupportModal from '@/Components/ContactSupportModal.vue';
 
 const page = usePage();
 
@@ -39,8 +40,17 @@ const currentPage = computed(() => {
 const notificationPanelOpen = ref(false);
 const notificationsRead = ref(false);
 const logoutModalOpen = ref(false);
+const contactSupportOpen = ref(false);
 
 watch(logoutModalOpen, (isOpen) => {
+    if (isOpen) {
+        document.body.classList.add('modal-open');
+    } else {
+        document.body.classList.remove('modal-open');
+    }
+});
+
+watch(contactSupportOpen, (isOpen) => {
     if (isOpen) {
         document.body.classList.add('modal-open');
     } else {
@@ -287,6 +297,10 @@ onUnmounted(() => {
                     <span class="material-icons">person</span>
                     <span class="nav-text">Profile</span>
                 </Link>
+                <button type="button" class="nav-item" @click="contactSupportOpen = true">
+                    <span class="material-icons">support_agent</span>
+                    <span class="nav-text">Contact Support</span>
+                </button>
                 <div class="nav-spacer"></div>
                 <button type="button" class="nav-item logout" @click="logout">
                     <span class="material-icons">logout</span>
@@ -404,5 +418,11 @@ onUnmounted(() => {
                 </div>
             </div>
         </div>
+
+        <ContactSupportModal
+            :show="contactSupportOpen"
+            :user="user"
+            @close="contactSupportOpen = false"
+        />
     </div>
 </template>
