@@ -24,10 +24,18 @@ class HandleInertiaRequests extends Middleware
 
         if ($user) {
             $notifications = AuditLog::query()
-                ->when($user->hasRole('Administrator'), function (Builder $query) {
+                ->when($user->can('audit_logs.view'), function (Builder $query) {
                     $query->latest('created_at')->limit(8);
                 }, function (Builder $query) use ($user) {
-                    $query->where('user_id', $user->id)->latest('created_at')->limit(8);
+                    if ($user->can('notifications.view')) {
+                        $query->where(function (Builder $q) use ($user) {
+                            $q->where('user_id', $user->id)
+                                ->orWhere('action', 'like', 'Support Ticket%');
+                        });
+                    } else {
+                        $query->where('user_id', $user->id);
+                    }
+                    $query->latest('created_at')->limit(8);
                 })
                 ->get(['id', 'user_name', 'action', 'created_at'])
                 ->map(function ($log) {
@@ -57,6 +65,7 @@ class HandleInertiaRequests extends Middleware
                     'permissions' => $user->getAllPermissions()->pluck('slug'),
                     'is_admin' => $user->hasRole('Administrator'),
                     'is_manager' => $user->hasRole('Manager'),
+                    'is_support_staff' => $user->hasRole('Support Staff'),
                     'profile_photo' => $user->profile_photo,
                     'last_login' => $user->last_login?->toIso8601String(),
                     'created_at' => $user->created_at?->toIso8601String(),

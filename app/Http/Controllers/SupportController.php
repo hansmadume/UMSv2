@@ -18,6 +18,59 @@ use Inertia\Inertia;
 
 class SupportController extends Controller
 {
+    /**
+     * Display the support dashboard with stats and recent tickets.
+     */
+    public function dashboard(Request $request)
+    {
+        $user = $request->user();
+
+        // Base query for tickets the user can access
+        $baseQuery = SupportTicket::query()->with(['user', 'assignedTo']);
+
+        if ($user->hasRole('Administrator')) {
+            // Admins see all tickets
+        } elseif ($user->hasAnyRole(['Support Staff', 'Manager'])) {
+            // Support staff and managers see all tickets
+        } elseif ($user->can('tickets.view_own')) {
+            $baseQuery->where('user_id', $user->id);
+        } else {
+            $baseQuery->where('id', 0); // No tickets
+        }
+
+        // Stats
+        $stats = [
+            'open_tickets' => (clone $baseQuery)->where('status', 'open')->count(),
+            'my_assigned_tickets' => (clone $baseQuery)->where('assigned_to', $user->id)->whereIn('status', ['open', 'in_progress'])->count(),
+            'high_urgent_tickets' => (clone $baseQuery)->whereIn('priority', ['high', 'urgent'])->whereIn('status', ['open', 'in_progress'])->count(),
+            'in_progress_tickets' => (clone $baseQuery)->where('status', 'in_progress')->count(),
+            'resolved_today' => (clone $baseQuery)->where('status', 'resolved')->whereDate('updated_at', today())->count(),
+        ];
+
+        // Recently updated tickets (limit 10)
+        $recentlyUpdated = (clone $baseQuery)
+            ->orderBy('updated_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'ticket_number' => $ticket->ticket_number,
+                    'username' => $ticket->user?->getDisplayName() ?? 'Anonymous',
+                    'email' => $ticket->user?->email ?? 'N/A',
+                    'status' => $ticket->status,
+                    'priority' => $ticket->priority,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return inertia('Support/Dashboard', [
+            'stats' => $stats,
+            'recentlyUpdated' => $recentlyUpdated,
+        ]);
+    }
+
     public function myTickets(Request $request)
     {
         $user = $request->user();
@@ -91,7 +144,7 @@ class SupportController extends Controller
             'subject' => ['required', 'string', 'max:150'],
             'priority' => ['required', 'in:low,medium,high,urgent'],
             'comments' => ['required', 'string', 'max:2000'],
-            'attachment' => ['nullable', 'file', 'max:5120'],
+            'attachment' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,txt'],
         ]);
 
         $user = $request->user();
@@ -177,6 +230,7 @@ class SupportController extends Controller
             'priority' => ['nullable', 'in:low,medium,high,urgent'],
             'assigned_to' => ['nullable', 'exists:users,id'],
             'comments' => ['nullable', 'string', 'max:2000'],
+            'attachment' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,txt'],
         ]);
 
         $replyAttachmentPath = null;
@@ -281,33 +335,6 @@ class SupportController extends Controller
         return false;
     }
 
-    public function dashboard()
-    {
-        $user = request()->user();
-
-        $openTickets = SupportTicket::where('status', 'open')->count();
-        $myAssignedTickets = SupportTicket::where('assigned_to', $user->id)->count();
-        $highUrgentTickets = SupportTicket::whereIn('priority', ['high', 'urgent'])
-            ->where('status', '!=', 'closed')
-            ->count();
-        $inProgressTickets = SupportTicket::where('status', 'in_progress')->count();
-        $resolvedToday = SupportTicket::where('status', 'resolved')
-            ->whereDate('updated_at', now()->toDateString())
-            ->count();
-        $recentlyUpdated = SupportTicket::with('user')->orderBy('updated_at', 'desc')->limit(10)->get();
-
-        return inertia('Support/Dashboard', [
-            'stats' => [
-                'open_tickets' => $openTickets,
-                'my_assigned_tickets' => $myAssignedTickets,
-                'high_urgent_tickets' => $highUrgentTickets,
-                'in_progress_tickets' => $inProgressTickets,
-                'resolved_today' => $resolvedToday,
-            ],
-            'recentlyUpdated' => $recentlyUpdated,
-        ]);
-    }
-
     public function createContact()
     {
         return Inertia::render('ContactSupport', [
@@ -319,7 +346,7 @@ class SupportController extends Controller
     {
         $validated = $request->validate([
             'comments' => ['required', 'string', 'max:2000'],
-            'attachment' => ['nullable', 'file', 'max:5120'],
+            'attachment' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,txt'],
         ]);
 
         $user = $request->user();
@@ -366,5 +393,62 @@ class SupportController extends Controller
         }
 
         return back()->with('success', 'Support ticket submitted successfully.');
+    }
+
+    /**
+     * Download a support ticket attachment securely.
+     */
+    public function downloadAttachment(Request $request, SupportTicket $ticket, string $attachment)
+    {
+        $user = $request->user();
+
+        // Check if user has access to this ticket
+        if (! $this->canAccessTicket($user, $ticket)) {
+            abort(403, 'You do not have permission to access this ticket.');
+        }
+
+        // Determine the attachment path based on the ticket
+        $attachmentPath = null;
+        $attachmentName = null;
+
+        // Check main ticket attachment
+        if ($ticket->attachment_path && basename($ticket->attachment_path) === $attachment) {
+            $attachmentPath = $ticket->attachment_path;
+            $attachmentName = $attachment;
+        }
+
+        // Check replies for attachment
+        if (! $attachmentPath) {
+            $message = $ticket->messages()->where('attachment_path', 'like', "%/$attachment")->first();
+            if ($message) {
+                $attachmentPath = $message->attachment_path;
+                $attachmentName = $attachment;
+            }
+        }
+
+        if (! $attachmentPath) {
+            abort(404, 'Attachment not found.');
+        }
+
+        $fullPath = storage_path('app/public/' . $attachmentPath);
+
+        if (! file_exists($fullPath)) {
+            abort(404, 'Attachment file not found.');
+        }
+
+        // Get MIME type
+        $mimeType = mime_content_type($fullPath);
+
+        // Set headers for secure file serving
+        $headers = [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . $attachmentName . '"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ];
+
+        return response()->file($fullPath, $headers);
     }
 }

@@ -50,8 +50,8 @@
                                 </div>
                                 <p class="message-text">{{ ticket.comments }}</p>
                                 <div v-if="ticket.attachment_path" class="message-attachment">
-                                    <span class="material-icons">attach_file</span>
-                                    <a :href="'/storage/' + ticket.attachment_path" target="_blank">View Attachment</a>
+                                    <span class="material-icons" aria-hidden="true">attach_file</span>
+                                    <a :href="route('support.attachments.download', { ticket: ticket.id, attachment: ticket.attachment_path.split('/').pop() })" target="_blank" rel="noopener noreferrer">View Attachment</a>
                                 </div>
                             </div>
                         </div>
@@ -64,8 +64,8 @@
                                 </div>
                                 <p class="message-text">{{ msg.message }}</p>
                                 <div v-if="msg.attachment_path" class="message-attachment">
-                                    <span class="material-icons">attach_file</span>
-                                    <a :href="'/storage/' + msg.attachment_path" target="_blank">View Attachment</a>
+                                    <span class="material-icons" aria-hidden="true">attach_file</span>
+                                    <a :href="route('support.attachments.download', { ticket: ticket.id, attachment: msg.attachment_path.split('/').pop() })" target="_blank" rel="noopener noreferrer">View Attachment</a>
                                 </div>
                             </div>
                         </div>
@@ -97,14 +97,14 @@
                                 :disabled="replyStatus === 'sending'"
                             />
                             <label for="reply_attachment" class="mui-file-label">
-                                <span class="material-icons">attach_file</span>
+                                <span class="material-icons" aria-hidden="true">attach_file</span>
                                 {{ replyAttachment ? replyAttachment.name : 'Attach files' }}
                             </label>
                             <button type="submit" class="mui-btn mui-btn-contained" :disabled="replyStatus === 'sending'">
-                                <span v-if="replyStatus === 'sending'" class="material-icons spin">refresh</span>
-                                <span v-else-if="replyStatus === 'sent'" class="material-icons">check</span>
-                                <span v-else-if="replyStatus === 'error'" class="material-icons">error</span>
-                                <span v-else class="material-icons">send</span>
+                                <span v-if="replyStatus === 'sending'" class="material-icons spin" aria-hidden="true">refresh</span>
+                                <span v-else-if="replyStatus === 'sent'" class="material-icons" aria-hidden="true">check</span>
+                                <span v-else-if="replyStatus === 'error'" class="material-icons" aria-hidden="true">error</span>
+                                <span v-else class="material-icons" aria-hidden="true">send</span>
                                 {{ replyStatus === 'sending' ? 'Sending...' : replyStatus === 'sent' ? 'Sent' : replyStatus === 'error' ? 'Failed' : 'Send Reply' }}
                             </button>
                         </div>
@@ -168,7 +168,28 @@ const replyStatus = ref('idle'); // idle | sending | sent | error
 const replyError = ref('');
 
 const onFileChange = (e) => {
-    replyAttachment.value = e.target.files[0] || null;
+    const file = e.target.files[0];
+    if (file) {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        
+        if (!allowedTypes.includes(file.type)) {
+            replyError.value = 'File type not allowed. Allowed types: JPG, PNG, GIF, WebP, PDF, DOC, DOCX, TXT';
+            e.target.value = '';
+            return;
+        }
+        
+        if (file.size > maxSize) {
+            replyError.value = 'File size must not exceed 5MB';
+            e.target.value = '';
+            return;
+        }
+        
+        replyError.value = '';
+        replyAttachment.value = file;
+    } else {
+        replyAttachment.value = null;
+    }
 };
 
 const updateTicket = (field, value) => {
@@ -525,63 +546,6 @@ const formatDate = (date) => {
     font-size: 16px;
 }
 
-.ticket-message {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-}
-
-.message-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #e5e7eb;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.message-avatar .material-icons {
-    color: #6b7280;
-    font-size: 20px;
-}
-
-@media (prefers-color-scheme: dark) {
-    .message-avatar {
-        background: var(--black-tertiary);
-    }
-
-    .message-avatar .material-icons {
-        color: var(--text-secondary);
-    }
-}
-
-.message-content {
-    flex: 1;
-}
-
-.message-content .message-header {
-    margin-bottom: 8px;
-}
-
-.message-content .ticket-description {
-    white-space: pre-wrap;
-    line-height: 1.6;
-    color: var(--text-primary);
-}
-
-.message-content .ticket-attachment {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-}
-
-.message-content .ticket-attachment .material-icons {
-    color: var(--text-secondary);
-}
-
 .reply-section {
     border-top: 1px solid #e5e7eb;
     padding-top: 24px;
@@ -691,14 +655,6 @@ const formatDate = (date) => {
     .ticket-footer {
         flex-direction: column;
         align-items: flex-start;
-    }
-
-    .ticket-message {
-        flex-direction: column;
-    }
-
-    .message-avatar {
-        display: none;
     }
 }
 </style>

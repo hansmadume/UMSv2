@@ -29,18 +29,33 @@ const backendNotifications = computed(() => page.props.notifications || []);
 const flash = computed(() => page.props.flash || {});
 
 const userDisplayName = computed(() => user.value?.full_name || user.value?.username || user.value?.email || 'User');
-const userRoleLabel = computed(() => user.value?.role || (user.value?.is_admin ? 'Administrator' : user.value?.is_manager ? 'Manager' : 'User'));
+const userRoleLabel = computed(() => user.value?.role || (user.value?.is_admin ? 'Administrator' : user.value?.is_manager ? 'Manager' : user.value?.is_support_staff ? 'Support Staff' : 'User'));
+
+const isSupportStaff = computed(() => user.value?.is_support_staff);
+const canViewSystemNotifications = computed(() => user.value?.is_admin || user.value?.is_manager || isSupportStaff.value);
 
 const notifications = computed(() => {
+    const roleLabel = userRoleLabel.value || 'User';
+    let message;
+    if (user.value?.is_admin || user.value?.is_manager) {
+        message = roleLabel + ' access is active. You can monitor all users, roles, and audit activity.';
+    } else if (isSupportStaff.value) {
+        message = roleLabel + ' access is active. You can monitor support tickets and your recent activity.';
+    } else {
+        message = roleLabel + ' access is active. You can view your activity and submitted tickets.';
+    }
     const signedInNotification = {
         id: 'signed-in',
-        title: 'Signed in as ' + userRoleLabel.value,
-        message: (userRoleLabel.value || 'User') + ' access is active. You can monitor users, roles, and audit activity.',
+        title: 'Signed in as ' + roleLabel,
+        message: message,
         time: new Date().toISOString(),
         icon: 'verified_user',
         read: false,
     };
-    return [signedInNotification, ...backendNotifications.value];
+    const uniqueBackend = backendNotifications.value.filter(
+        (item, index, self) => index === self.findIndex((n) => n.id === item.id && n.title === item.title && n.message === item.message)
+    );
+    return [signedInNotification, ...uniqueBackend];
 });
 
 const notificationCount = computed(() => notifications.value.length);
@@ -294,40 +309,40 @@ onUnmounted(() => {
             </div>
             <nav class="sidebar-nav">
                 <Link :href="route('dashboard')" class="nav-item" :class="{ active: route().current('dashboard') }">
-                    <span class="material-icons">dashboard</span>
+                    <span class="material-icons" aria-hidden="true">dashboard</span>
                     <span class="nav-text">Dashboard</span>
                 </Link>
                 <Link v-if="canViewSupportDashboard" :href="route('support.dashboard')" class="nav-item" :class="{ active: route().current('support.dashboard') }">
-                    <span class="material-icons">support_agent</span>
+                    <span class="material-icons" aria-hidden="true">support_agent</span>
                     <span class="nav-text">Support Dashboard</span>
                 </Link>
                 <Link v-if="canViewOwnTickets" :href="userRole === 'Support Staff' || userRole === 'Manager' ? route('support.index') : route('support.my-tickets')" class="nav-item" :class="{ active: route().current('support.index') || route().current('support.my-tickets') }">
-                    <span class="material-icons">confirmation_number</span>
+                    <span class="material-icons" aria-hidden="true">confirmation_number</span>
                     <span class="nav-text">My Tickets</span>
                 </Link>
                 <Link v-if="canManageUsers" :href="route('users.index')" class="nav-item" :class="{ active: route().current('users.*') }">
-                    <span class="material-icons">group</span>
+                    <span class="material-icons" aria-hidden="true">group</span>
                     <span class="nav-text">Users</span>
                 </Link>
                 <Link v-if="isAdmin" :href="route('roles.index')" class="nav-item" :class="{ active: route().current('roles.*') }">
-                    <span class="material-icons">security</span>
+                    <span class="material-icons" aria-hidden="true">security</span>
                     <span class="nav-text">Roles</span>
                 </Link>
                 <Link v-if="isAdmin" :href="route('audit-logs.index')" class="nav-item" :class="{ active: route().current('audit-logs.*') }">
-                    <span class="material-icons">history</span>
+                    <span class="material-icons" aria-hidden="true">history</span>
                     <span class="nav-text">Audit Logs</span>
                 </Link>
                 <Link :href="route('profile.edit')" class="nav-item" :class="{ active: route().current('profile.*') }">
-                    <span class="material-icons">person</span>
+                    <span class="material-icons" aria-hidden="true">person</span>
                     <span class="nav-text">Profile</span>
                 </Link>
                 <button v-if="canContactSupport" type="button" class="nav-item" @click="contactSupportOpen = true">
-                    <span class="material-icons">support_agent</span>
+                    <span class="material-icons" aria-hidden="true">support_agent</span>
                     <span class="nav-text">Contact Support</span>
                 </button>
                 <div class="nav-spacer"></div>
                 <button type="button" class="nav-item logout" @click="logout">
-                    <span class="material-icons">logout</span>
+                    <span class="material-icons" aria-hidden="true">logout</span>
                     <span class="nav-text">Logout</span>
                 </button>
             </nav>
@@ -386,7 +401,7 @@ onUnmounted(() => {
                                     <div class="notification-item-content">
                                         <strong>{{ item.title }}</strong>
                                         <p>{{ item.message }}</p>
-                                        <small>{{ formatNotificationTime(item.time) }}</small>
+                                        <small v-if="item.time">{{ formatNotificationTime(item.time) }}</small>
                                     </div>
                                 </div>
                             </div>

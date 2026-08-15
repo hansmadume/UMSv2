@@ -43,7 +43,28 @@ watch(() => props.show, (isOpen) => {
 });
 
 const onFileChange = (e) => {
-    form.attachment = e.target.files[0] || null;
+    const file = e.target.files[0];
+    if (file) {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        
+        if (!allowedTypes.includes(file.type)) {
+            form.errors.attachment = 'File type not allowed. Allowed types: JPG, PNG, GIF, WebP, PDF, DOC, DOCX, TXT';
+            e.target.value = '';
+            return;
+        }
+        
+        if (file.size > maxSize) {
+            form.errors.attachment = 'File size must not exceed 5MB';
+            e.target.value = '';
+            return;
+        }
+        
+        form.errors.attachment = '';
+        form.attachment = file;
+    } else {
+        form.attachment = null;
+    }
 };
 
 const cancelSupport = () => {
@@ -71,7 +92,7 @@ const sendSupport = () => {
         <div class="confirm-modal-backdrop"></div>
         <div class="confirm-card confirm-card-lg" role="dialog" aria-modal="true" aria-labelledby="supportModalTitle">
             <div class="confirm-card-icon">
-                <span class="material-icons">support_agent</span>
+                <span class="material-icons" aria-hidden="true">support_agent</span>
             </div>
             <div class="confirm-card-content">
                 <template v-if="!sent">
@@ -110,7 +131,7 @@ const sendSupport = () => {
                                 class="mui-file-input"
                             />
                             <label for="support_attachment" class="mui-file-label">
-                                <span class="material-icons">attach_file</span>
+                                <span class="material-icons" aria-hidden="true">attach_file</span>
                                 {{ form.attachment ? form.attachment.name : 'Attach files' }}
                             </label>
                             <InputError :message="form.errors.attachment" />
@@ -119,8 +140,8 @@ const sendSupport = () => {
                         <div class="confirm-card-actions">
                             <button type="button" class="mui-btn mui-btn-outlined" @click="cancelSupport" :disabled="form.processing">Cancel</button>
                             <button type="submit" class="mui-btn mui-btn-contained" :disabled="form.processing">
-                                <span v-if="form.processing" class="material-icons spin">refresh</span>
-                                <span v-else class="material-icons">send</span>
+                                <span v-if="form.processing" class="material-icons spin" aria-hidden="true">refresh</span>
+                                <span v-else class="material-icons" aria-hidden="true">send</span>
                                 {{ form.processing ? 'Sending...' : 'Send' }}
                             </button>
                         </div>
@@ -129,7 +150,7 @@ const sendSupport = () => {
 
                 <template v-else>
                     <div class="support-success">
-                        <span class="material-icons support-success-icon">check_circle</span>
+                        <span class="material-icons support-success-icon" aria-hidden="true">check_circle</span>
                         <h3>Message Sent Successfully!</h3>
                         <p>Thank you for contacting support. We've received your request and will get back to you as soon as possible.</p>
                         <button type="button" class="mui-btn mui-btn-contained" @click="cancelSupport">Close</button>

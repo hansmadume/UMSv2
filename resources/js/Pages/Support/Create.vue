@@ -63,7 +63,7 @@
                             class="mui-file-input"
                         />
                         <label for="attachment" class="mui-file-label">
-                            <span class="material-icons">attach_file</span>
+                            <span class="material-icons" aria-hidden="true">attach_file</span>
                             {{ form.attachment ? form.attachment.name : 'Attach files (optional)' }}
                         </label>
                         <InputError :message="form.errors.attachment" />
@@ -72,7 +72,7 @@
                     <div class="form-actions">
                         <Link :href="route('support.index')" class="mui-btn mui-btn-outlined">Cancel</Link>
                         <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                            <span class="material-icons">send</span>
+                            <span class="material-icons" aria-hidden="true">send</span>
                             Submit Ticket
                         </PrimaryButton>
                     </div>
@@ -99,7 +99,28 @@ const form = useForm({
 });
 
 const onFileChange = (e) => {
-    form.attachment = e.target.files[0] || null;
+    const file = e.target.files[0];
+    if (file) {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        
+        if (!allowedTypes.includes(file.type)) {
+            form.errors.attachment = 'File type not allowed. Allowed types: JPG, PNG, GIF, WebP, PDF, DOC, DOCX, TXT';
+            e.target.value = '';
+            return;
+        }
+        
+        if (file.size > maxSize) {
+            form.errors.attachment = 'File size must not exceed 5MB';
+            e.target.value = '';
+            return;
+        }
+        
+        form.errors.attachment = '';
+        form.attachment = file;
+    } else {
+        form.attachment = null;
+    }
 };
 
 const submit = () => {

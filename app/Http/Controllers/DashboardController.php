@@ -14,6 +14,8 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
+        $user = $request->user();
+
         $totalUsers = User::where('status', 'active')->count();
         $totalRoles = Role::where('status', 'active')->count();
         $totalLogs = AuditLog::count();
@@ -23,9 +25,26 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        $recentLogs = AuditLog::orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        $recentLogsQuery = AuditLog::query();
+
+        if ($user->can('audit_logs.view')) {
+            $recentLogsQuery->orderBy('created_at', 'desc')->limit(10);
+        } elseif ($user->can('notifications.view')) {
+            $recentLogsQuery
+                ->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                        ->orWhere('action', 'like', 'Support Ticket%');
+                })
+                ->orderBy('created_at', 'desc')
+                ->limit(10);
+        } else {
+            $recentLogsQuery
+                ->where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->limit(10);
+        }
+
+        $recentLogs = $recentLogsQuery->get();
 
         // Notifications (recent logins or important events)
         $notifications = $recentLogs->map(function ($log) {

@@ -5,6 +5,8 @@
     --black-hover: #333333;
     --black-border: #3a3a3a;
 
+    --card-bg: var(--black-secondary);
+
     --green-primary: #1b5e20;
     --green-light: #00c853;
     --green-lighter: #00e676;
@@ -40,6 +42,8 @@ html[data-theme="light"] {
     --black-tertiary: #eef3ea;
     --black-hover: #e2eadb;
     --black-border: #d4dec9;
+
+    --card-bg: var(--black-secondary);
 
     --green-primary: #76b900;
     --green-light: #76b900;

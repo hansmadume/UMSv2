@@ -43,6 +43,11 @@ Route::middleware(['auth', 'inactivity'])->group(function () {
         Route::post('/contact-support', [SupportController::class, 'storeContact'])->name('support.contact.store');
     });
 
+    // Secure file download for support attachments
+    Route::middleware(['auth', 'inactivity'])->group(function () {
+        Route::get('/support/tickets/{ticket}/attachments/{attachment}', [SupportController::class, 'downloadAttachment'])->name('support.attachments.download');
+    });
+
     // User Management
     Route::middleware(['permission:users.view'])->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
