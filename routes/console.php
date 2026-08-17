@@ -19,7 +19,7 @@ Artisan::command('send-mail', function () {
         });
 
         $this->info("Test email sent successfully to {$to}");
-    } catch (\Throwable $e) {
-        $this->error('Failed to send email: ' . $e->getMessage());
+    } catch (Throwable $e) {
+        $this->error('Failed to send email: '.$e->getMessage());
     }
 })->purpose('Send test email via configured SMTP');

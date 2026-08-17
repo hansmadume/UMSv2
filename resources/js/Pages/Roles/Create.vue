@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { usePersistentForm } from '@/composables/usePersistentForm';
 
 const props = defineProps({
@@ -29,6 +30,38 @@ const togglePermission = (id) => {
         form.permissions.push(id);
     }
 };
+
+const permissionGroups = computed(() => {
+    const groups = {};
+    const order = [
+        'Dashboard', 'Profile', 'Users', 'Roles', 'Permissions',
+        'Tickets', 'Staff', 'Notifications',
+        'Audit Logs', 'Settings', 'Support'
+    ];
+
+    props.permissions.forEach(p => {
+        const category = p.slug.split('.')[0];
+        const label = category.charAt(0).toUpperCase() + category.slice(1);
+        if (!groups[label]) {
+            groups[label] = [];
+        }
+        groups[label].push(p);
+    });
+
+    return Object.keys(groups)
+        .sort((a, b) => {
+            const indexA = order.indexOf(a);
+            const indexB = order.indexOf(b);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return a.localeCompare(b);
+        })
+        .map(category => ({
+            category,
+            permissions: groups[category],
+        }));
+});
 
 const submit = () => {
     form.post(route('roles.store'), {
@@ -78,15 +111,20 @@ const submit = () => {
                     <div v-if="permissions.length" class="mui-input-group">
                         <label class="mui-label" style="position: static; display: block; margin-bottom: 12px; font-size:0.85rem; color:var(--text-secondary);">Permissions</label>
                         <div class="permissions-grid">
-                            <label v-for="p in permissions" :key="p.id" class="permission-checkbox">
-                                <input
-                                    type="checkbox"
-                                    :value="p.id"
-                                    :checked="form.permissions.includes(p.id)"
-                                    @change="togglePermission(p.id)"
-                                />
-                                <span>{{ p.name }}</span>
-                            </label>
+                            <template v-for="group in permissionGroups" :key="group.category">
+                                <div class="permission-group">
+                                    <div class="permission-group-header">{{ group.category }}</div>
+                                    <label v-for="p in group.permissions" :key="p.id" class="permission-checkbox" :title="p.description">
+                                        <input
+                                            type="checkbox"
+                                            :value="p.id"
+                                            :checked="form.permissions.includes(p.id)"
+                                            @change="togglePermission(p.id)"
+                                        />
+                                        <span>{{ p.description || p.name }}</span>
+                                    </label>
+                                </div>
+                            </template>
                         </div>
                         <InputError :message="form.errors.permissions" />
                     </div>
@@ -103,3 +141,49 @@ const submit = () => {
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.permissions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.permission-group {
+    background: var(--black-tertiary);
+    border: 1px solid var(--black-border);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.permission-group-header {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--black-border);
+}
+
+.permission-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 4px 0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.permission-checkbox input[type="checkbox"] {
+    accent-color: var(--primary);
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.permission-checkbox span {
+    word-break: break-word;
+}
+</style>

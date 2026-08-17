@@ -14,13 +14,13 @@ return new class extends Migration
         // Add Laravel expected columns to users table
         if (Schema::hasTable('users')) {
             Schema::table('users', function (Blueprint $table) {
-                if (!Schema::hasColumn('users', 'remember_token')) {
+                if (! Schema::hasColumn('users', 'remember_token')) {
                     $table->rememberToken()->after('deleted_at');
                 }
-                if (!Schema::hasColumn('users', 'email_verified_at')) {
+                if (! Schema::hasColumn('users', 'email_verified_at')) {
                     $table->timestamp('email_verified_at')->nullable()->after('password_hash');
                 }
-                if (!Schema::hasColumn('users', 'name')) {
+                if (! Schema::hasColumn('users', 'name')) {
                     $table->string('name')->nullable()->after('id');
                 }
                 // Ensure password column exists for Laravel auth (alias to password_hash)
@@ -29,7 +29,7 @@ return new class extends Migration
         }
 
         // Create password_reset_tokens table (Laravel standard)
-        if (!Schema::hasTable('password_reset_tokens')) {
+        if (! Schema::hasTable('password_reset_tokens')) {
             Schema::create('password_reset_tokens', function (Blueprint $table) {
                 $table->string('email')->primary();
                 $table->string('token');
@@ -38,7 +38,7 @@ return new class extends Migration
         }
 
         // Create sessions table (Laravel standard)
-        if (!Schema::hasTable('sessions')) {
+        if (! Schema::hasTable('sessions')) {
             Schema::create('sessions', function (Blueprint $table) {
                 $table->string('id')->primary();
                 $table->foreignId('user_id')->nullable()->index();

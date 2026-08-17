@@ -10,7 +10,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'login';
 
 $allowed_pages = ['login', 'dashboard', 'profile', 'user_management', 'user_roles', 'audit_logs', 'logout'];
 
-if (!in_array($page, $allowed_pages, true)) {
+if (! in_array($page, $allowed_pages, true)) {
     $page = 'login';
 }
 
@@ -28,7 +28,7 @@ if ($page === 'logout') {
         logoutUser();
         redirectTo('login');
     } catch (Throwable $exception) {
-        error_log('Logout validation failed: ' . $exception->getMessage());
+        error_log('Logout validation failed: '.$exception->getMessage());
         $_SESSION['login_notice'] = $exception instanceof RuntimeException
             ? $exception->getMessage()
             : 'Unable to validate your logout request. Please try again.';
@@ -36,7 +36,7 @@ if ($page === 'logout') {
     }
 }
 
-if (!empty($_SESSION['login_notice'])) {
+if (! empty($_SESSION['login_notice'])) {
     $login_notice = $_SESSION['login_notice'];
     unset($_SESSION['login_notice']);
 }
@@ -57,7 +57,7 @@ if ($page === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $login_error = 'Invalid email/username or password.';
         }
     } catch (Throwable $exception) {
-        error_log('Login error: ' . $exception->getMessage());
+        error_log('Login error: '.$exception->getMessage());
         $login_error = $exception instanceof RuntimeException
             ? $exception->getMessage()
             : 'Unable to validate your login at this time. Please try again later.';

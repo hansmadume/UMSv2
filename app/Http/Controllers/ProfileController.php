@@ -50,7 +50,7 @@ class ProfileController extends Controller
         $path = $request->file('profile_photo')->store('profile-photos', 'public');
 
         $user->update([
-            'profile_photo' => '/storage/' . $path,
+            'profile_photo' => '/storage/'.$path,
         ]);
 
         return Redirect::route('profile.edit');

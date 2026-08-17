@@ -50,10 +50,10 @@ const onAvatarChange = (event) => {
         <div class="profile-page">
             <div class="mui-card profile-header-card">
                 <div class="profile-avatar" @click="$refs.avatarInput.click()">
-                    <span v-if="!$page.props.auth.user.profile_photo" class="material-icons">person</span>
+                    <span v-if="!$page.props.auth.user.profile_photo" class="material-icons" aria-hidden="true">person</span>
                     <img v-else :src="$page.props.auth.user.profile_photo" alt="Profile photo" />
                     <span class="avatar-edit-hint">
-                        <span class="material-icons">camera_alt</span>
+                        <span class="material-icons" aria-hidden="true">camera_alt</span>
                     </span>
                 </div>
                 <input ref="avatarInput" type="file" accept="image/*" style="display: none;" @change="onAvatarChange">

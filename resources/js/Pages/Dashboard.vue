@@ -83,7 +83,7 @@ const userRole = computed(() => user.value?.role || (user.value?.is_admin ? 'Adm
                                 <div class="activity-text"><strong>{{ u.full_name || u.username }}</strong></div>
                                 <div class="activity-time">{{ u.email }}</div>
                             </div>
-                             <div class="activity-time">{{ u.role?.name || 'No role' }}</div>
+                              <div class="activity-time">{{ u.roles?.[0]?.name || u.role?.name || 'No role' }}</div>
                         </div>
                         <div v-if="!recentUsers.length" class="activity-item">
                             <div class="activity-info">

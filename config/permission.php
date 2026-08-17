@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Permission;
+use App\Models\Role;
+
 return [
 
     /*
@@ -23,8 +26,8 @@ return [
     */
 
     'models' => [
-        'permission' => \App\Models\Permission::class,
-        'role' => \App\Models\Role::class,
+        'permission' => Permission::class,
+        'role' => Role::class,
     ],
 
     /*
@@ -54,7 +57,7 @@ return [
     */
 
     'cache' => [
-        'expiration_time' => \DateInterval::createFromDateString('24 hours'),
+        'expiration_time' => DateInterval::createFromDateString('24 hours'),
 
         'key' => 'spatie.permission.cache',
 
